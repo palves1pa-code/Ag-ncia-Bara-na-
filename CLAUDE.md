@@ -23,6 +23,11 @@ Produção: https://painel.agenciabarauna.com.br · Dono: Pedro Alves (CEO)
   → **Primeira tarefa sugerida:** ligar o repositório do GitHub ao Vercel e servir `public/` direto (com minificação no build),
   aposentando o bucket `painel` para o app.
 
+## Usuário do Claude no painel
+`claude@agenciabarauna.com.br`, papel `admin`, para subir prévias e criar entregas pela API como a equipe (respeitando o RLS).
+A senha fica na variável de ambiente `PAINEL_CLAUDE_SENHA` do ambiente do Claude Code (nunca no repositório).
+Login: `POST /auth/v1/token?grant_type=password` com a chave anon de `public/app.js`; upload em `previas` com content-type `text/plain`.
+
 ## Segredos (Supabase → Edge Functions → Secrets)
 `ASAAS_API_KEY` (configurado), `ASAAS_WEBHOOK_TOKEN` (pendente), `RESEND_API_KEY` (pendente: e-mails de NF e de redefinição de senha),
 `NF_REMETENTE` (opcional).
@@ -40,8 +45,10 @@ Enviadas ao bucket `previas` (content-type `text/plain`) e abertas por `/preview
 iframe **sandbox sem `allow-same-origin`** e injeta um ajuste para links com `#`.
 Prévia atual: Drilex site v1 em `previas/drilex/site-v1.html` (no bucket: `712455d6e470a513b266/drilex-site-v1.html`),
 entrega "Prévia do novo site – versão 1" em rascunho no painel.
-Prévia dev4lab v2 (aguardando envio): `previas/dev4lab/site-v2.html` (arquivo único; rotas por hash `#/servicos/<slug>`,
-formulário simulado). Perguntas para a entrega em `previas/dev4lab/perguntas-v2.txt` (formato `pergunta|ajuda`).
+Prévia dev4lab v2: `previas/dev4lab/site-v2.html` (arquivo único; rotas por hash `#/servicos/<slug>`, formulário simulado;
+telas com etiqueta "Imagem real" são exemplos fictícios). No bucket: `6815d626c2d99399827e/dev4lab-site-v2.html`; entrega
+"Prévia do novo site – versão 2" (`02b92845-394d-43f5-8e60-06838e48a8dd`) aguardando aprovação, com as 17 perguntas de
+`previas/dev4lab/perguntas-v2.txt` (formato `pergunta|ajuda`).
 Marca dev4lab: azul-marinho #1D1A3B, laranja #F5A135, cinza #F2F2F2; fonte New Order (na prévia, Outfit nos títulos e Inter no texto).
 Foco comercial (briefing): vendas diretas de treinamentos, consultoria/suporte e relatórios para a base de clientes da Confience;
 as implantações são vendidas pela Confience, e a dev4lab executa.
