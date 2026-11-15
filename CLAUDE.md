@@ -40,6 +40,11 @@ Enviadas ao bucket `previas` (content-type `text/plain`) e abertas por `/preview
 iframe **sandbox sem `allow-same-origin`** e injeta um ajuste para links com `#`.
 Prévia atual: Drilex site v1 em `previas/drilex/site-v1.html` (no bucket: `712455d6e470a513b266/drilex-site-v1.html`),
 entrega "Prévia do novo site – versão 1" em rascunho no painel.
+Prévia dev4lab v2 (aguardando envio): `previas/dev4lab/site-v2.html` (arquivo único; rotas por hash `#/servicos/<slug>`,
+formulário simulado). Perguntas para a entrega em `previas/dev4lab/perguntas-v2.txt` (formato `pergunta|ajuda`).
+Marca dev4lab: azul-marinho #1D1A3B, laranja #F5A135, cinza #F2F2F2; fonte New Order (na prévia, Outfit nos títulos e Inter no texto).
+Foco comercial (briefing): vendas diretas de treinamentos, consultoria/suporte e relatórios para a base de clientes da Confience;
+as implantações são vendidas pela Confience, e a dev4lab executa.
 
 ## Próximos trabalhos
 - dev4lab: corrigir o site para tráfego (formulário hoje é simulado e não envia; sem GA4/GTM/Ads; CSP bloqueia scripts do Google;

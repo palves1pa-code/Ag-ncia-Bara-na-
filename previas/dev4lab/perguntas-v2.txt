@@ -1,0 +1,11 @@
+Os números estão corretos (12+ anos de myLIMS, 10+ implantações, 1º parceiro externo certificado)?|O site atual fala em 15+ anos e 18+ clientes. Vamos usar os números do briefing, a menos que vocês prefiram outros.
+Podemos citar Mérieux NutriSciences, SGS, Intertek, Theraskin e Croda no site?|Se puder, mandem também os logotipos e, se houver, um depoimento ou caso de sucesso.
+Podemos dizer publicamente que as implantações são contratadas com a Confience e que a DEV4LAB faz a execução?|Aparece na página "Experiência em implantação".
+Como funciona o suporte especializado: pontual, pacote de horas ou contrato mensal?
+Os treinamentos são presenciais, on-line ou os dois?
+Atendem laboratórios de alimentos e nutrição?|Para incluir na lista de segmentos.
+Quais ERPs ou sistemas já integraram e podemos citar?
+O site precisa continuar em inglês e espanhol?|A v2 está só em português, focada na base de clientes da Confience no Brasil.
+Vocês têm licença da fonte New Order para uso na web (Adobe Fonts)?|Se não tiverem, usamos uma fonte parecida e gratuita nos títulos.
+Têm fotos da equipe para usarmos no site?
+Quem tem acesso ao domínio dev4lab.com e à hospedagem atual?|Precisamos disso para publicar o site novo, corrigir o endereço sem "www" e instalar GA4, GTM e Google Ads.
