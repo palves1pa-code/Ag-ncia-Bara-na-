@@ -283,11 +283,15 @@ fieldset.campo{border:0;padding:0;margin:0}
 .foto>div{text-align:center;font-size:13px;font-weight:600}
 .foto>div svg{margin:0 auto 8px}
 .foto::before{content:'';position:absolute;right:-40px;bottom:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(245,161,53,.35),transparent 70%)}
-.sobre .foto{margin-top:30px}
+.sobre-foto{margin-top:56px}
+.sobre .foto{aspect-ratio:auto;height:clamp(220px,32vw,400px)}
 .sobre .foto-tag{top:10px}
 .foto .foto-tag{top:10px}
 /* seção de projetos */
-.projs{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.projs{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:auto auto auto;column-gap:22px;row-gap:0}
+.proj{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:0}
+.proj .tela{display:flex;flex-direction:column}
+.proj .tela>:last-child{flex:1}
 .proj h3{font-size:18px;margin-top:16px}
 .proj p{color:var(--muted);font-size:15px;margin-top:6px}
 .proj .tela{box-shadow:0 14px 34px rgba(29,26,59,.12)}
@@ -347,7 +351,8 @@ footer.rod{background:var(--navy3);color:rgba(255,255,255,.72);font-size:14.5px}
   .hamb{display:inline-flex}
   .hero-in,.sv-hero .hero-in{grid-template-columns:minmax(0,1fr);gap:56px;padding:60px 24px 76px}
   .necess,.servs,.relac{grid-template-columns:1fr 1fr}
-  .projs{grid-template-columns:1fr 1fr}
+  .projs{grid-template-columns:1fr 1fr;row-gap:40px}
+  .proj{grid-row:auto;grid-template-rows:auto}
   .hero .tela{max-width:560px}
   .passos{grid-template-columns:1fr 1fr;row-gap:36px}
   .passo:nth-child(2)::after{display:none}
@@ -368,6 +373,10 @@ footer.rod{background:var(--navy3);color:rgba(255,255,255,.72);font-size:14.5px}
   .flutua{position:static;margin-top:12px;max-width:none}
   .hero h1{font-size:clamp(31px,8.4vw,40px)}
   .necess,.servs,.relac,.passos,.projs{grid-template-columns:1fr}
+  .projs{row-gap:36px}
+  .sobre .foto{height:280px}
+  .sobre-foto{margin-top:40px}
+  .proj{grid-row:auto;grid-template-rows:auto}
   .lims{grid-template-columns:1fr}.lims-menu{display:none}
   .db-graf{grid-template-columns:1fr 1fr}
   .tela{font-size:11px}
@@ -761,7 +770,6 @@ footer.rod{background:var(--navy3);color:rgba(255,255,255,.72);font-size:14.5px}
       '<p class="txt">A DEV4LAB é uma empresa de tecnologia fundada em 2024, especializada na implantação, no desenvolvimento e na evolução de soluções para o myLIMS, plataforma da Confience (antiga Labsoft).</p>' +
       '<p class="txt">Nossa equipe soma mais de 12 anos de experiência com a plataforma e entende não só a tecnologia, mas os processos e as exigências de cada laboratório. É essa combinação que nos permite transformar necessidades operacionais em soluções práticas.</p>' +
       '<p class="citacao">Nosso propósito é ajudar laboratórios a extrair o máximo de valor da tecnologia que já possuem.</p>' +
-      mFoto('Foto da equipe DEV4LAB', 'foto da equipe DEV4LAB (de preferência no escritório ou em um cliente)') +
     '</div><div class="difs">' +
       [['medalha', 'Conhecimento profundo do myLIMS', 'Domínio técnico e funcional da plataforma, módulo por módulo.'],
        ['pessoas', 'Experiência comprovada', 'Projetos para empresas como Mérieux NutriSciences, SGS, Intertek, Theraskin e Croda.'],
@@ -769,7 +777,9 @@ footer.rod{background:var(--navy3);color:rgba(255,255,255,.72);font-size:14.5px}
        ['raio', 'Agilidade nas entregas', 'Processos enxutos e entregas rápidas, sem abrir mão da qualidade.'],
        ['chat', 'Atendimento próximo', 'Você fala direto com o especialista responsável pelo seu projeto.']].map(function (d) {
         return '<div class="dif"><span class="ico">' + ic(d[0], 20) + '</span><div><h3>' + d[1] + '</h3><p>' + d[2] + '</p></div></div>'; }).join('') +
-    '</div></div></section>' +
+    '</div></div>' +
+    '<div class="wrap sobre-foto">' + mFoto('Foto da equipe DEV4LAB', 'foto da equipe DEV4LAB, na horizontal (de preferência no escritório ou em um cliente)') + '</div>' +
+    '</section>' +
 
     '<section class="bl" id="perguntas" aria-labelledby="fq-tit"><div class="wrap">' +
       '<div class="cab centro"><span class="rot">Dúvidas frequentes</span><h2 id="fq-tit">Perguntas frequentes</h2></div>' + faqHtml(faq) +
