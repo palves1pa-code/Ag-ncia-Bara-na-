@@ -9,3 +9,9 @@ O site precisa continuar em inglês e espanhol?|A v2 está só em português, fo
 Vocês têm licença da fonte New Order para uso na web (Adobe Fonts)?|Se não tiverem, usamos uma fonte parecida e gratuita nos títulos.
 Têm fotos da equipe para usarmos no site?
 Quem tem acesso ao domínio dev4lab.com e à hospedagem atual?|Precisamos disso para publicar o site novo, corrigir o endereço sem "www" e instalar GA4, GTM e Google Ads.
+Podem enviar prints de um dashboard em Power BI feito por vocês?|Vai no topo da página inicial e na página de relatórios. Use dados fictícios ou anonimizados, sem nome de cliente.
+Podem enviar um relatório ou laudo feito no Report Builder?|Pode ser em PDF ou print, com dados anonimizados e sem o logo do cliente (ou com autorização dele).
+Têm um print ou diagrama de uma integração que vocês fizeram?|Pode ser a tela de monitoramento, um log ou um desenho do fluxo (ERP, myLIMS, equipamentos).
+A Confience autoriza mostrar telas do myLIMS no site?|Usaríamos nas personalizações e na página de implantação, sempre com dados anonimizados. Sem autorização, mostramos só o que vocês desenvolveram (relatórios, dashboards e integrações).
+Têm uma tela de algum projeto com IA ou automação?|Para a página de Inteligência Artificial. Se ainda não houver projeto que possa ser mostrado, deixamos uma ilustração.
+Têm fotos de treinamentos ou consultorias com clientes?|Só com autorização das pessoas que aparecem.
