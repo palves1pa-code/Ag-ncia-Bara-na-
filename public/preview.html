@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Prévia · Agência Baraúna</title><meta name="robots" content="noindex">
+<style>html,body{margin:0;height:100%}iframe{border:0;width:100%;height:100%;display:block}p{font-family:Arial,sans-serif;padding:40px;text-align:center;color:#55635D}</style></head>
+<body><p id="m">Carregando a prévia…</p>
+<script>
+(function(){
+  var f = new URLSearchParams(location.search).get('f') || '';
+  var m = document.getElementById('m');
+  if (!/^[A-Za-z0-9._\/-]+$/.test(f) || f.indexOf('..') >= 0) { m.textContent = 'Prévia não encontrada.'; return; }
+  fetch('https://fhgmqphszubwucvytoum.supabase.co/storage/v1/object/public/previas/' + f, { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+    .then(function (h) {
+      var i = document.createElement('iframe');
+      i.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox');
+      i.setAttribute('title', 'Prévia');
+      var fix = '<script>document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href^=\'#\']");if(!a)return;e.preventDefault();var h=a.getAttribute("href");if(location.hash===h){dispatchEvent(new HashChangeEvent("hashchange"))}else{location.hash=h}},true);<\/script>';
+      h = /<head[^>]*>/i.test(h) ? h.replace(/<head[^>]*>/i, function (x) { return x + fix; }) : fix + h;
+      i.srcdoc = h; m.remove(); document.body.appendChild(i);
+    })
+    .catch(function () { m.textContent = 'Prévia não encontrada.'; });
+})();
+</script></body></html>

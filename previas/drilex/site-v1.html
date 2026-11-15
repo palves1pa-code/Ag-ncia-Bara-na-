@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drilex Automação · Prévia do novo site</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{--navy:#23426B;--navy2:#1A3352;--navy3:#132741;--gray:#75828A;--steel:#F1F4F7;--line:#DCE3EA;--ink:#14212E;--muted:#5A6873;--wa:#1FA855;--hf:'Barlow Condensed',Arial Narrow,sans-serif;--bf:'Inter',Arial,sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--bf);color:var(--ink);background:#fff;line-height:1.55;font-size:16px}
+a{color:var(--navy)}
+h1,h2,h3{font-family:var(--hf);text-transform:uppercase;letter-spacing:.01em;line-height:1.05;margin:0}
+h1{font-size:clamp(40px,6vw,68px);font-weight:800}h2{font-size:clamp(30px,4vw,44px);font-weight:800}h3{font-size:24px;font-weight:700}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+.previa{background:#FFF4D6;color:#5B4300;font-size:13px;text-align:center;padding:8px 16px}
+.previa b{font-weight:700}
+.pend{display:inline-block;background:#FFE7A3;color:#5B4300;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:600;font-family:var(--bf);text-transform:none;letter-spacing:0;vertical-align:middle}
+header.topo{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+header.topo .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:76px}
+header.topo img{height:52px;width:auto;display:block}
+nav.menu{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+nav.menu a{font-weight:600;font-size:14px;color:var(--ink);text-decoration:none;padding:10px 12px;border-radius:8px}
+nav.menu a:not(.btn):hover,nav.menu a.on:not(.btn){color:var(--navy);background:var(--steel)}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 22px;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;border:2px solid var(--navy);background:var(--navy);color:#fff;cursor:pointer;font-family:var(--bf)}
+.btn:hover{background:var(--navy2)}
+.btn.claro{background:transparent;color:#fff;border-color:rgba(255,255,255,.6)}
+.btn.contorno{background:#fff;color:var(--navy)}
+.btn.wa{background:var(--wa);border-color:var(--wa)}
+.menu-btn{display:none}
+.pagina{display:none}.pagina.on{display:block}
+.hero{background:var(--navy3);color:#fff;position:relative;overflow:hidden}
+.hero .wrap{padding:84px 24px 96px;position:relative;z-index:1;display:grid;grid-template-columns:1.25fr .75fr;gap:40px;align-items:center}
+.hero p.lead{font-size:19px;color:#C8D3E0;max-width:620px;margin:20px 0 30px}
+.hero .eyebrow{color:#9FB4CC;font-weight:600;letter-spacing:.12em;font-size:13px;text-transform:uppercase}
+.hero svg.engrenagem{position:absolute;right:-120px;top:-80px;width:620px;height:620px;opacity:.08}
+.hero .cartao{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:26px}
+.hero .cartao div{display:flex;align-items:baseline;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+.hero .cartao div:last-child{border-bottom:0}
+.hero .cartao b{font-family:var(--hf);font-size:44px;font-weight:800;color:#fff;min-width:120px}
+.hero .cartao span{color:#C8D3E0;font-size:15px}.hero .cartao span.pend{color:#5B4300}
+section.bloco{padding:80px 0}
+section.cinza{background:var(--steel)}
+.titulo{max-width:720px;margin-bottom:36px}.titulo p{color:var(--muted);font-size:17px;margin:12px 0 0}
+.titulo .eyebrow{color:var(--gray);font-weight:700;letter-spacing:.12em;font-size:13px;text-transform:uppercase;display:block;margin-bottom:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:12px}
+.card .ic{width:52px;height:52px;border-radius:12px;background:var(--steel);display:flex;align-items:center;justify-content:center;color:var(--navy)}
+.card p{margin:0;color:var(--muted)}
+.card a.mais{font-weight:700;text-decoration:none;margin-top:auto}
+.marca{border-top:5px solid var(--navy)}
+.marca .nome{font-family:var(--hf);font-size:30px;font-weight:800;color:var(--navy);text-transform:uppercase}
+.foto{background:linear-gradient(135deg,#DDE4EC,#C3CEDA);border-radius:14px;min-height:280px;display:flex;align-items:center;justify-content:center;color:#5B6B7B;font-weight:600;text-align:center;padding:20px;position:relative}
+.foto::after{content:"Foto real a enviar";position:absolute;top:12px;left:12px;background:#FFE7A3;color:#5B4300;font-size:12px;padding:2px 8px;border-radius:6px}
+.lista{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.lista li{display:flex;gap:10px;align-items:flex-start}.lista li::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--navy);margin-top:9px;flex-shrink:0}
+.faixa{background:var(--navy);color:#fff;border-radius:18px;padding:44px;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+.faixa p{color:#C8D3E0;margin:8px 0 0}
+.produtos{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.produto{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.produto .img{height:130px;background:linear-gradient(135deg,#E6EBF1,#CFD8E2);display:flex;align-items:center;justify-content:center;color:var(--gray)}
+.produto div.t{padding:14px 16px;font-weight:600}
+.catalogos{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.catalogo{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px;display:flex;flex-direction:column;gap:10px}
+.catalogo .capa{height:150px;border-radius:10px;background:var(--navy);color:#fff;display:flex;align-items:flex-end;padding:16px;font-family:var(--hf);font-size:26px;font-weight:800;text-transform:uppercase}
+form .campo{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+label{font-weight:600;font-size:14px}
+input,textarea,select{font:15px var(--bf);padding:12px 14px;border:1px solid var(--line);border-radius:8px;width:100%;background:#fff;color:var(--ink)}
+textarea{min-height:110px}
+.fundo{position:fixed;inset:0;background:rgba(19,39,65,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.fundo.on{display:flex}
+.modal{background:#fff;border-radius:16px;padding:30px;max-width:440px;width:100%}
+.ok{background:#E6F6EC;color:#14632F;border-radius:10px;padding:14px;font-weight:600;display:none}
+.contato{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.mapa{background:linear-gradient(135deg,#E6EBF1,#CFD8E2);border-radius:14px;min-height:260px;display:flex;align-items:center;justify-content:center;color:#5B6B7B;font-weight:600}
+footer{background:var(--navy3);color:#C8D3E0;padding:56px 0 30px;font-size:14px}
+footer .cols{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:28px}
+footer h4{color:#fff;font-family:var(--hf);text-transform:uppercase;font-size:18px;margin:0 0 12px}
+footer a{color:#C8D3E0;text-decoration:none;display:block;padding:3px 0}
+footer img{height:64px;margin-bottom:12px}
+.copy{border-top:1px solid rgba(255,255,255,.12);margin-top:36px;padding-top:18px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.wa-flutua{position:fixed;right:20px;bottom:20px;z-index:30;width:60px;height:60px;border-radius:50%;background:var(--wa);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.lp-hero{background:var(--navy);color:#fff}
+.lp-hero .wrap{padding:64px 24px;display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:start}
+.lp-hero form{background:#fff;color:var(--ink);border-radius:16px;padding:28px}
+.lp-tag{display:inline-block;background:#FFE7A3;color:#5B4300;border-radius:6px;padding:4px 10px;font-size:13px;font-weight:600;margin-bottom:14px}
+@media(max-width:900px){.hero .wrap,.grid2,.contato,.lp-hero .wrap{grid-template-columns:1fr}.grid3,.catalogos{grid-template-columns:1fr}.produtos{grid-template-columns:1fr 1fr}footer .cols{grid-template-columns:1fr 1fr}
+nav.menu{display:none;position:absolute;top:76px;left:0;right:0;background:#fff;flex-direction:column;align-items:stretch;padding:12px;border-bottom:1px solid var(--line)}nav.menu.aberto{display:flex}.menu-btn{display:inline-flex}.faixa{padding:30px}}
+</style>
+</head>
+<body>
+<div class="previa"><b>Prévia do novo site · versão 1.</b> Navegue à vontade. Fotos, textos e números marcados em <span class="pend">amarelo</span> dependem de informações da Drilex.</div>
+<header class="topo"><div class="wrap">
+  <a href="#inicio" aria-label="Drilex Automação – início"><img src="https://fhgmqphszubwucvytoum.supabase.co/storage/v1/object/public/previas/5243d4cf6247c51bfd16/logo-drilex.png" alt="Drilex Automação"></a>
+  <button class="btn contorno menu-btn" aria-expanded="false" aria-controls="menu" onclick="var m=document.getElementById('menu');m.classList.toggle('aberto');this.setAttribute('aria-expanded',m.classList.contains('aberto'))">Menu</button>
+  <nav class="menu" id="menu" aria-label="Menu principal">
+    <a href="#inicio">Início</a><a href="#empresa">A Drilex</a><a href="#marcas">Marcas</a><a href="#pneumatica">Pneumática</a><a href="#eletrica">Elétrica</a><a href="#motores">Motores</a><a href="#catalogos">Catálogos</a>
+    <a class="btn" href="#contato" style="color:#fff;margin-left:6px">Orçamento</a>
+  </nav>
+</div></header>
+
+<main>
+<!-- INÍCIO -->
+<div class="pagina" id="p-inicio">
+  <section class="hero">
+    <svg class="engrenagem" viewBox="0 0 100 100" aria-hidden="true"><path fill="#fff" fill-rule="evenodd" d="M45 2h10l2 12 7 3 10-7 7 7-7 10 3 7 12 2v10l-12 2-3 7 7 10-7 7-10-7-7 3-2 12H45l-2-12-7-3-10 7-7-7 7-10-3-7-12-2V45l12-2 3-7-7-10 7-7 10 7 7-3zM50 32a18 18 0 1 0 0 36 18 18 0 0 0 0-36z"/></svg>
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">Distribuidor de automação industrial · Jundiaí</span>
+        <h1>Automação que mantém sua produção rodando</h1>
+        <p class="lead">Pneumática, componentes elétricos e motores das marcas Micro Automação, Metaltex e Hercules, com consultoria gratuita para escolher o produto certo para a sua linha.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn wa" href="#contato">Falar com um especialista</a><a class="btn claro" href="#catalogos">Baixar catálogos</a></div>
+      </div>
+      <div class="cartao" aria-label="Números da Drilex">
+        <div><b>2017</b><span>atendendo a indústria de Jundiaí e região</span></div>
+        <div><b>200+</b><span>clientes rotineiros <span class="pend">confirmar</span></span></div>
+        <div><b>100+</b><span>automações concluídas <span class="pend">confirmar</span></span></div>
+      </div>
+    </div>
+  </section>
+  <section class="bloco"><div class="wrap">
+    <div class="titulo"><span class="eyebrow">Linhas de produtos</span><h2>Tudo para automatizar e manter sua operação</h2><p>Encontre a linha certa e fale com quem entende de chão de fábrica.</p></div>
+    <div class="grid3">
+      <div class="card"><div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></div><h3>Pneumática</h3><p>Cilindros, válvulas, unidades de conservação, conexões e tubos da Micro Automação.</p><a class="mais" href="#pneumatica">Ver linha →</a></div>
+      <div class="card"><div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><h3>Elétrica e eletrônica</h3><p>Relés, sensores, temporizadores, fontes e sinalizadores da Metaltex.</p><a class="mais" href="#eletrica">Ver linha →</a></div>
+      <div class="card"><div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 1 1-2-5"/></svg></div><h3>Motores elétricos</h3><p>Motores monofásicos e trifásicos Hercules para as mais diversas aplicações.</p><a class="mais" href="#motores">Ver linha →</a></div>
+    </div>
+  </div></section>
+  <section class="bloco cinza"><div class="wrap grid2">
+    <div><div class="titulo" style="margin-bottom:20px"><span class="eyebrow">Por que a Drilex</span><h2>Mais que vender peças: resolver o seu problema</h2></div>
+      <ul class="lista"><li>Consultoria gratuita na escolha dos produtos</li><li>Distribuidor das marcas Micro Automação, Metaltex e Hercules</li><li>Atendimento próximo para Jundiaí e região</li><li>Entrega ágil para sua linha não parar <span class="pend">confirmar prazo</span></li></ul>
+      <div style="margin-top:26px"><a class="btn" href="#empresa">Conheça a Drilex</a></div></div>
+    <div class="foto">Foto da fachada, do estoque ou da equipe</div>
+  </div></section>
+  <section class="bloco"><div class="wrap">
+    <div class="faixa"><div><h2 style="font-size:36px">Precisa do catálogo completo?</h2><p>Baixe os catálogos das marcas em PDF e encontre o código do produto que você procura.</p></div><a class="btn contorno" href="#catalogos">Ver catálogos</a></div>
+  </div></section>
+</div>
+
+<!-- EMPRESA -->
+<div class="pagina" id="p-empresa">
+  <section class="bloco"><div class="wrap grid2">
+    <div><div class="titulo"><span class="eyebrow">A Drilex</span><h2>Desde 2017 facilitando a automação da indústria</h2></div>
+      <p>A Drilex Automação nasceu em 2017 distribuindo materiais pneumáticos em Jundiaí e região. Com o tempo, ampliamos o portfólio e hoje somos distribuidores de marcas reconhecidas em automação pneumática, componentes elétricos e motores.</p>
+      <p>Nosso propósito é garantir soluções nos processos dos nossos clientes, com orientação técnica para que cada componente escolhido funcione do jeito certo na sua linha. <span class="pend">história e missão a revisar</span></p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px"><a class="btn" href="#contato">Fale com a gente</a><a class="btn contorno" href="#marcas">Nossas marcas</a></div></div>
+    <div class="foto">Foto da equipe ou da sede</div>
+  </div></section>
+</div>
+
+<!-- MARCAS -->
+<div class="pagina" id="p-marcas">
+  <section class="bloco"><div class="wrap">
+    <div class="titulo"><span class="eyebrow">Marcas</span><h2>Distribuidor de marcas líderes</h2><p>Trabalhamos com fabricantes de referência para garantir qualidade, garantia e reposição.</p></div>
+    <div class="grid3">
+      <div class="card marca"><span class="nome">Micro Automação</span><p>Referência em automação pneumática, fundada em 1978 e presente em 25 países.</p><a class="mais" href="#pneumatica">Linha pneumática →</a></div>
+      <div class="card marca"><span class="nome">Metaltex</span><p>Fundada em 1958 e pioneira na produção de relés no Brasil, com linha completa de componentes elétricos e eletrônicos.</p><a class="mais" href="#eletrica">Linha elétrica →</a></div>
+      <div class="card marca"><span class="nome">Hercules</span><p>Motores elétricos para uso industrial. <span class="pend">texto da marca a confirmar</span></p><a class="mais" href="#motores">Linha de motores →</a></div>
+    </div>
+  </div></section>
+</div>
+
+<!-- LINHAS -->
+<div class="pagina" id="p-pneumatica">
+  <section class="hero" style="background:var(--navy2)"><div class="wrap" style="grid-template-columns:1fr;padding:64px 24px">
+    <div><span class="eyebrow">Micro Automação</span><h1 style="font-size:clamp(36px,5vw,56px)">Pneumática</h1><p class="lead">Soluções pneumáticas completas para movimentar, posicionar e controlar sua linha com eficiência.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn wa" href="#contato">Pedir orçamento</a><a class="btn claro" href="#catalogos">Catálogo Micro Automação</a></div></div></div></section>
+  <section class="bloco"><div class="wrap">
+    <div class="titulo"><span class="eyebrow">Produtos</span><h2>Principais itens da linha</h2><p>Itens de exemplo <span class="pend">confirmar produtos e fotos prioritários</span></p></div>
+    <div class="produtos"><div class="produto"><div class="img">Foto do produto</div><div class="t">Cilindros pneumáticos</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Válvulas direcionais</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Unidades de conservação (FRL)</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Conexões e tubos</div></div></div>
+    <div class="faixa" style="margin-top:40px"><div><h2 style="font-size:34px">Não sabe qual modelo escolher?</h2><p>Nossa consultoria é gratuita: conte a aplicação e indicamos o produto certo.</p></div><a class="btn wa" href="#contato">Falar com especialista</a></div>
+  </div></section>
+</div>
+
+<div class="pagina" id="p-eletrica">
+  <section class="hero" style="background:var(--navy2)"><div class="wrap" style="grid-template-columns:1fr;padding:64px 24px">
+    <div><span class="eyebrow">Metaltex</span><h1 style="font-size:clamp(36px,5vw,56px)">Elétrica e eletrônica</h1><p class="lead">Componentes para comando, proteção e sinalização de máquinas e painéis.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn wa" href="#contato">Pedir orçamento</a><a class="btn claro" href="#catalogos">Catálogo Metaltex</a></div></div></div></section>
+  <section class="bloco"><div class="wrap">
+    <div class="titulo"><span class="eyebrow">Produtos</span><h2>Principais itens da linha</h2><p>Itens de exemplo <span class="pend">confirmar produtos e fotos prioritários</span></p></div>
+    <div class="produtos"><div class="produto"><div class="img">Foto do produto</div><div class="t">Relés</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Sensores</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Temporizadores</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Fontes e sinalizadores</div></div></div>
+    <div class="faixa" style="margin-top:40px"><div><h2 style="font-size:34px">Não sabe qual modelo escolher?</h2><p>Nossa consultoria é gratuita: conte a aplicação e indicamos o produto certo.</p></div><a class="btn wa" href="#contato">Falar com especialista</a></div>
+  </div></section>
+</div>
+
+<div class="pagina" id="p-motores">
+  <section class="hero" style="background:var(--navy2)"><div class="wrap" style="grid-template-columns:1fr;padding:64px 24px">
+    <div><span class="eyebrow">Hercules</span><h1 style="font-size:clamp(36px,5vw,56px)">Motores elétricos</h1><p class="lead">Motores robustos e eficientes para manter sua operação funcionando sem paradas.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn wa" href="#contato">Pedir orçamento</a><a class="btn claro" href="#catalogos">Catálogo Hercules</a></div></div></div></section>
+  <section class="bloco"><div class="wrap">
+    <div class="titulo"><span class="eyebrow">Produtos</span><h2>Principais itens da linha</h2><p>Itens de exemplo <span class="pend">confirmar produtos e fotos prioritários</span></p></div>
+    <div class="produtos"><div class="produto"><div class="img">Foto do produto</div><div class="t">Motores trifásicos</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Motores monofásicos</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Motores com flange</div></div><div class="produto"><div class="img">Foto do produto</div><div class="t">Linha sob consulta</div></div></div>
+    <div class="faixa" style="margin-top:40px"><div><h2 style="font-size:34px">Não sabe qual modelo escolher?</h2><p>Nossa consultoria é gratuita: conte a aplicação e indicamos o produto certo.</p></div><a class="btn wa" href="#contato">Falar com especialista</a></div>
+  </div></section>
+</div>
+
+<!-- CATÁLOGOS -->
+<div class="pagina" id="p-catalogos">
+  <section class="bloco"><div class="wrap">
+    <div class="titulo"><span class="eyebrow">Catálogos</span><h2>Baixe os catálogos completos</h2><p>Informe seu nome e e-mail e o download é liberado na hora. Nosso time pode ajudar a encontrar o código certo.</p></div>
+    <div class="catalogos">
+      <div class="catalogo"><div class="capa">Micro Automação</div><b>Catálogo de pneumática</b><span style="color:var(--muted)">PDF <span class="pend">arquivo a enviar</span></span><button class="btn" onclick="abrirCat('Micro Automação')">Baixar catálogo</button></div>
+      <div class="catalogo"><div class="capa" style="background:var(--navy2)">Metaltex</div><b>Componentes elétricos</b><span style="color:var(--muted)">PDF <span class="pend">arquivo a enviar</span></span><button class="btn" onclick="abrirCat('Metaltex')">Baixar catálogo</button></div>
+      <div class="catalogo"><div class="capa" style="background:#3D5875">Hercules</div><b>Motores elétricos</b><span style="color:var(--muted)">PDF <span class="pend">arquivo a enviar</span></span><button class="btn" onclick="abrirCat('Hercules')">Baixar catálogo</button></div>
+    </div>
+  </div></section>
+</div>
+
+<!-- LANDING PAGE (Google Ads) -->
+<div class="pagina" id="p-lp-pneumatica">
+  <section class="lp-hero"><div class="wrap">
+    <div><span class="lp-tag">Exemplo de página de campanha (Google Ads)</span><h1 style="font-size:clamp(36px,5vw,58px)">Componentes pneumáticos Micro em Jundiaí</h1>
+      <p class="lead" style="color:#C8D3E0;font-size:19px">Cilindros, válvulas e conexões com pronta entrega e consultoria gratuita para escolher o modelo certo.</p>
+      <ul class="lista" style="color:#E3EAF2"><li>Distribuidor oficial Micro Automação</li><li>Atendimento técnico para Jundiaí e região</li><li>Orçamento rápido pelo WhatsApp</li></ul></div>
+    <form onsubmit="event.preventDefault();this.querySelector('.ok').style.display='block'">
+      <h3 style="color:var(--navy);margin-bottom:16px">Peça seu orçamento</h3>
+      <div class="campo"><label for="lpn">Nome</label><input id="lpn" required></div>
+      <div class="campo"><label for="lpe">Empresa</label><input id="lpe"></div>
+      <div class="campo"><label for="lpw">WhatsApp</label><input id="lpw" type="tel" required></div>
+      <div class="campo"><label for="lpp">O que você precisa?</label><textarea id="lpp" placeholder="Ex.: cilindro ISO 63 x 200"></textarea></div>
+      <button class="btn" type="submit" style="width:100%;justify-content:center">Receber orçamento</button>
+      <p class="ok" role="status" style="margin-top:12px">Recebemos! Um especialista entra em contato em breve.</p>
+    </form>
+  </div></section>
+</div>
+
+<!-- CONTATO -->
+<div class="pagina" id="p-contato">
+  <section class="bloco"><div class="wrap contato">
+    <div><div class="titulo"><span class="eyebrow">Contato</span><h2>Fale com um especialista</h2><p>Consultoria gratuita para encontrar a solução certa para a sua automação.</p></div>
+      <ul class="lista"><li>Av. Cezar Brunholi, 836 – Sala 3, Santa Giovana – Jundiaí/SP – 13212-826</li><li>(11) 3963-8397 · WhatsApp (11) 97233-9716 <span class="pend">confirmar</span></li><li>vendas@drilex.com.br</li><li>Segunda a sexta, 8h às 18h <span class="pend">confirmar horário</span></li></ul>
+      <div style="margin-top:24px"><a class="btn wa" href="#contato">Chamar no WhatsApp</a></div>
+      <div class="mapa" style="margin-top:28px">Mapa do Google</div></div>
+    <form onsubmit="event.preventDefault();this.querySelector('.ok').style.display='block'" style="background:var(--steel);border-radius:16px;padding:28px">
+      <div class="campo"><label for="cn">Nome</label><input id="cn" required></div>
+      <div class="campo"><label for="ce">E-mail</label><input id="ce" type="email" required></div>
+      <div class="campo"><label for="ct">Telefone</label><input id="ct" type="tel"></div>
+      <div class="campo"><label for="cl">Linha de interesse</label><select id="cl"><option>Pneumática</option><option>Elétrica e eletrônica</option><option>Motores elétricos</option><option>Outro</option></select></div>
+      <div class="campo"><label for="cm">Mensagem</label><textarea id="cm"></textarea></div>
+      <button class="btn" type="submit">Enviar mensagem</button>
+      <p class="ok" role="status" style="margin-top:12px">Mensagem enviada! Retornamos em breve.</p>
+    </form>
+  </div></section>
+</div>
+</main>
+
+<footer><div class="wrap">
+  <div class="cols">
+    <div><img src="https://fhgmqphszubwucvytoum.supabase.co/storage/v1/object/public/previas/5243d4cf6247c51bfd16/logo-drilex-branco.png" alt="Drilex Automação"><p style="margin:0">Distribuidor de automação industrial em Jundiaí: pneumática, componentes elétricos e motores.</p></div>
+    <div><h4>Linhas</h4><a href="#pneumatica">Pneumática</a><a href="#eletrica">Elétrica e eletrônica</a><a href="#motores">Motores elétricos</a><a href="#catalogos">Catálogos</a></div>
+    <div><h4>Empresa</h4><a href="#empresa">A Drilex</a><a href="#marcas">Marcas</a><a href="#lp-pneumatica">Página de campanha</a><a href="#contato">Contato</a></div>
+    <div><h4>Contato</h4><span>(11) 3963-8397</span><br><span>vendas@drilex.com.br</span><br><span>Jundiaí – SP</span></div>
+  </div>
+  <div class="copy"><span>© 2026 Drilex Automação. Todos os direitos reservados.</span><span>Site por Agência Baraúna</span></div>
+</div></footer>
+
+<a class="wa-flutua" href="#contato" aria-label="Falar no WhatsApp"><svg width="30" height="30" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.4z"/></svg></a>
+
+<div class="fundo" id="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="modal">
+  <h3 id="mt" style="color:var(--navy);margin-bottom:6px">Baixar catálogo</h3>
+  <p style="color:var(--muted);margin:0 0 18px">Catálogo <b id="mc"></b>. Preencha para liberar o download.</p>
+  <form id="fc"><div class="campo"><label for="mn">Nome</label><input id="mn" required></div><div class="campo"><label for="me">E-mail</label><input id="me" type="email" required></div>
+  <div class="campo"><label for="mw">WhatsApp (opcional)</label><input id="mw" type="tel"></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="submit">Liberar download</button><button class="btn contorno" type="button" onclick="fechar()">Cancelar</button></div>
+  <p class="ok" id="mok" role="status" style="margin-top:14px">Download liberado! (Na versão final o PDF baixa aqui e o contato vai para o time de vendas.)</p></form>
+</div></div>
+
+<script>
+function rota(){var h=(location.hash||'#inicio').slice(1)||'inicio';var p=document.getElementById('p-'+h);if(!p){h='inicio';p=document.getElementById('p-inicio');}
+document.querySelectorAll('.pagina').forEach(function(x){x.classList.toggle('on',x===p)});
+document.querySelectorAll('nav.menu a').forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+h)});
+document.getElementById('menu').classList.remove('aberto');window.scrollTo(0,0);}
+addEventListener('hashchange',rota);rota();
+function abrirCat(n){document.getElementById('mc').textContent=n;document.getElementById('mok').style.display='none';document.getElementById('modal').classList.add('on');document.getElementById('mn').focus();}
+function fechar(){document.getElementById('modal').classList.remove('on');}
+document.getElementById('fc').addEventListener('submit',function(e){e.preventDefault();document.getElementById('mok').style.display='block';});
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)fechar();});
+addEventListener('keydown',function(e){if(e.key==='Escape')fechar();});
+</script>
+</body>
+</html>
