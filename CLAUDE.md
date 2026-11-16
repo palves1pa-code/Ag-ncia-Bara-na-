@@ -86,6 +86,17 @@ comentários e versões); **planos de anúncios** Google Ads e Meta Ads (ver aba
 - RLS: o cliente só vê posts de calendário `enviado|concluido` (`privado.post_visivel`), muda só o status (gatilho `proteger_post`) e insere
   comentários. O calendário vira `concluido` sozinho quando todos os posts estão aprovados. Posts antigos sem calendário seguem o fluxo antigo.
 
+## Automação do Claude (fila + rodadas às 8h, 13h e 16h) – `20261116150000_automacao_fila.sql`
+- Gatilhos no banco enchem `automacao_fila` sem custo de IA: `briefing` (item "Formulário de briefing" concluído/alterado pelo cliente;
+  `ref_id` = cliente), `solicitacao_nova` (nova solicitação) e `solicitacao_resposta` (cliente respondeu depois que a última ação da
+  automação naquela solicitação foi enviar perguntas; resultado começando com `perguntas`). Uma entrada aberta por (tipo, ref_id).
+- Rotina agendada do Claude Code (sessão nova a cada disparo, seg a sex, horário de Brasília) segue `automacao/ROTINA.md` e usa
+  `automacao/painel.py` (contar, pegar, concluir, mensagem, validar, google, meta, calendario, site). Fila vazia → encerra na 1ª consulta.
+- Tudo nasce em **rascunho** com `origem = 'claude'` (entregas e calendários) e aparece no card "Automação do Claude" do Dashboard
+  e com a etiqueta "Criado pelo Claude". O único contato direto com o cliente são perguntas e avisos nas solicitações.
+- Serviços do cliente vêm das condições (`trafego`, `site`, `redes`) dos itens de Primeiros passos dele.
+- Para pausar: desativar a tarefa agendada "Painel Baraúna · rodada da fila" em claude.ai/code (ou pedir ao Claude).
+
 ## Prévias em HTML
 Enviadas ao bucket `previas` (content-type `text/plain`) e abertas por `/preview.html?f=<caminho>`, que carrega o HTML num
 iframe **sandbox sem `allow-same-origin`** e injeta um ajuste para links com `#`.

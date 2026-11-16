@@ -317,6 +317,7 @@ function Dashboard({ perfil }) {
     <${Topo} titulo=${'Olá' + (primeiro ? ', ' + primeiro : '')} sub=${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}>
       <a class="btn pri" href="#/propostas/nova">Nova proposta</a><//>
     <${LembreteCalendarios} />
+    <${PainelAutomacao} />
     <div class="grid">
       <${Kpi} label="Receita mensal fechada" valor=${brl(soma(fech, o => o.valor_mensal))} nota=${brl(soma(fech, o => o.valor_unico)) + ' em implantações'} k="ok" />
       <${Kpi} label="Em negociação" valor=${brl(soma(aberto, o => o.valor_mensal)) + '/mês'} nota=${aberto.length + ' proposta(s) em aberto'} k="info" />
@@ -883,7 +884,7 @@ function Entregas() {
   return html`<${Topo} titulo="Aprovações" sub="Prévias de site, cronogramas, artes e estratégias que o cliente valida, completa e aprova pelo portal."><button class="btn pri" onClick=${() => setNova({})}>Nova entrega</button><//>
     <div class="tabs" role="group" aria-label="Filtro">${[['abertas', 'Em aberto'], ['aprovadas', 'Aprovadas'], ['todas', 'Todas']].map(([k, t]) => html`<button class=${f === k ? 'on' : ''} onClick=${() => setF(k)}>${t}</button>`)}</div>
     <section class="card tabela"><table><thead><tr><th>Cliente</th><th>Entrega</th><th>Tipo</th><th>Versão</th><th>Perguntas</th><th>Status</th><th></th></tr></thead><tbody>
-      ${vis.length ? vis.map(e => { const q = e.entrega_perguntas || []; return html`<tr><td><b>${e.clientes?.nome_empresa}</b></td><td>${e.titulo}<div class="sub">${dataHora(e.atualizado_em)}</div></td><td>${(TIPOS_ENT.find(t => t[0] === e.tipo) || [])[1]}</td><td>v${e.versao}</td><td>${q.length ? q.filter(x => x.resposta).length + ' de ' + q.length : '—'}</td><td><${PillDe} mapa=${ST_ENT} v=${e.status} /></td><td><button class="btn pq" onClick=${() => setAb(e)}>Abrir</button></td></tr>`; }) : html`<tr><td colspan="7" class="vazio">Nenhuma entrega neste filtro.</td></tr>`}
+      ${vis.length ? vis.map(e => { const q = e.entrega_perguntas || []; return html`<tr><td><b>${e.clientes?.nome_empresa}</b></td><td>${e.titulo}${e.origem === 'claude' && html` <${PillClaude} />`}<div class="sub">${dataHora(e.atualizado_em)}</div></td><td>${(TIPOS_ENT.find(t => t[0] === e.tipo) || [])[1]}</td><td>v${e.versao}</td><td>${q.length ? q.filter(x => x.resposta).length + ' de ' + q.length : '—'}</td><td><${PillDe} mapa=${ST_ENT} v=${e.status} /></td><td><button class="btn pq" onClick=${() => setAb(e)}>Abrir</button></td></tr>`; }) : html`<tr><td colspan="7" class="vazio">Nenhuma entrega neste filtro.</td></tr>`}
     </tbody></table></section>
     ${ab && html`<div class="fundo" onClick=${x => x.target === x.currentTarget && setAb(null)}><div class="modal" style="max-width:1100px" role="dialog" aria-modal="true" aria-label=${ab.titulo}>
       <header style="flex-wrap:wrap;gap:10px"><div><h2>${ab.clientes?.nome_empresa} – ${ab.titulo}</h2><span class="sub">v${ab.versao} · <${PillDe} mapa=${ST_ENT} v=${ab.status} /></span></div><div class="acoes">${ab.formato !== 'plano' && html`<a class="btn pq" href=${linkPrevia(ab)} target="_blank" rel="noopener">Tela cheia</a><button class="btn pq" onClick=${() => setNova(ab)}>Nova versão / editar</button>${ab.status === 'rascunho' && html`<button class="btn pq pri" onClick=${() => status(ab, 'aguardando_aprovacao')}>Enviar ao cliente</button>`}`}<button class="btn pq" onClick=${() => setAb(null)}>Fechar</button></div></header>
@@ -1940,7 +1941,7 @@ const AbasCampanhas = ({ at }) => html`<div class="tabs" role="group" aria-label
 function PlanosAds() {
   const clientes = useLista('clientes', 'id,nome_empresa,status');
   const [l, setL] = useState(null); const [novo, setNovo] = useState(false); const [dup, setDup] = useState(null); const [f, setF] = useState('');
-  const carregar = () => sb.from('ads_planos').select('id,nome,plataforma,atualizado_em,cliente_id,clientes(nome_empresa),entregas(id,status,versao,entrega_perguntas(id,resposta)),ads_marcacoes(id,resolvido)').order('atualizado_em', { ascending: false }).then(r => setL(r.data || []));
+  const carregar = () => sb.from('ads_planos').select('id,nome,plataforma,atualizado_em,cliente_id,clientes(nome_empresa),entregas(id,status,versao,origem,entrega_perguntas(id,resposta)),ads_marcacoes(id,resolvido)').order('atualizado_em', { ascending: false }).then(r => setL(r.data || []));
   useEffect(() => { carregar(); }, []);
   const criar = async v => {
     const { data: e, error } = await sb.from('entregas').insert({ cliente_id: v.cliente_id, tipo: 'trafego', titulo: TITULO_PLANO[v.plataforma], formato: 'plano', status: 'rascunho', descricao: v.plataforma === 'google' ? 'Campanha de Pesquisa no Google. Revise as palavras-chave e os anúncios, responda as perguntas e comente o que quiser ajustar.' : 'Campanha no Facebook e no Instagram. Revise os públicos, os anúncios e as artes, responda as perguntas e comente o que quiser ajustar.' }).select('id').single();
@@ -1956,7 +1957,7 @@ function PlanosAds() {
       <button class="btn pri" onClick=${() => setNovo(true)}>Novo plano</button><//>
     <${AbasCampanhas} at="/campanhas/planos" />
     ${!l ? html`<${Carregando} />` : html`<section class="card tabela"><table><thead><tr><th>Cliente</th><th>Plano</th><th>Plataforma</th><th>Versão</th><th>Perguntas</th><th>Ajustes pedidos</th><th>Status</th><th></th></tr></thead><tbody>
-      ${vis.length ? vis.map(x => { const q = x.entregas?.entrega_perguntas || [], m = (x.ads_marcacoes || []).filter(y => !y.resolvido).length; return html`<tr><td><b>${x.clientes?.nome_empresa}</b></td><td>${x.nome}<div class="sub">${dataHora(x.atualizado_em)}</div></td><td>${PLAT_ADS[x.plataforma]}</td><td>v${x.entregas?.versao}</td><td>${q.length ? q.filter(y => y.resposta).length + ' de ' + q.length : '—'}</td><td>${m ? html`<${Pill} k="bad">${m} em aberto<//>` : '—'}</td><td><${PillDe} mapa=${ST_ENT} v=${x.entregas?.status} /></td>
+      ${vis.length ? vis.map(x => { const q = x.entregas?.entrega_perguntas || [], m = (x.ads_marcacoes || []).filter(y => !y.resolvido).length; return html`<tr><td><b>${x.clientes?.nome_empresa}</b></td><td>${x.nome}${x.entregas?.origem === 'claude' && html` <${PillClaude} />`}<div class="sub">${dataHora(x.atualizado_em)}</div></td><td>${PLAT_ADS[x.plataforma]}</td><td>v${x.entregas?.versao}</td><td>${q.length ? q.filter(y => y.resposta).length + ' de ' + q.length : '—'}</td><td>${m ? html`<${Pill} k="bad">${m} em aberto<//>` : '—'}</td><td><${PillDe} mapa=${ST_ENT} v=${x.entregas?.status} /></td>
         <td><div class="acoes"><a class="btn pq pri" href=${'#/campanhas/planos/' + x.id}>Abrir</a><button class="btn pq" onClick=${() => setDup(x)}>Duplicar</button></div></td></tr>`; }) : html`<tr><td colspan="8" class="vazio">Nenhum plano ainda. Crie o primeiro em “Novo plano”.</td></tr>`}
     </tbody></table></section>`}
     ${novo && html`<${FormModal} titulo="Novo plano de anúncios" inicial=${{ plataforma: 'google', cliente_id: f }} rotulo="Criar plano" onSalvar=${criar} onFechar=${() => setNovo(false)} campos=${[
@@ -2006,7 +2007,7 @@ function EditorPlanoAds({ id }) {
   else if (sec === 'perguntas') corpo = html`<${EdPerguntas} ...${ctxEq} />`;
   else corpo = html`<section class="card"><${VisaoPlano} P=${P} ctx=${{ podeMarcar: false, onMudou: recarregar }} /></section>`;
   return html`<${Topo} titulo=${p.nome} sub=${P.cliente + ' · ' + PLAT_ADS[p.plataforma] + ' · versão ' + e.versao}>
-      <${PillDe} mapa=${ST_ENT} v=${e.status} />
+      <${PillDe} mapa=${ST_ENT} v=${e.status} />${e.origem === 'claude' && html`<${PillClaude} />`}
       <button class="btn pq" onClick=${() => { toast('Rascunho salvo. As alterações dos itens são gravadas na hora.'); recarregar(); }}>Salvar rascunho</button>
       <button class="btn pq pri" disabled=${env || probs.length > 0} title=${probs.length ? 'Resolva as pendências antes de enviar' : ''} onClick=${enviar}>${e.status === 'rascunho' ? 'Enviar ao cliente' : 'Nova versão'}</button>
       <button class="btn pq" onClick=${exportar}>${google ? 'Exportar CSV para o Google Ads Editor' : 'Exportar planilha (CSV)'}</button>
@@ -2410,7 +2411,7 @@ function CalendarioEquipe({ cid, mes, cliente }) {
   const [a, m] = mes.split('-').map(Number), ini = new Date(a, m - 1, 1), off = (ini.getDay() + 6) % 7, nd = new Date(a, m, 0).getDate(), totC = Math.ceil((off + nd) / 7) * 7;
   const abertos = id => C.coments.filter(x => x.post_id === id && !x.autor_agencia && !x.resolvido).length;
   return html`<section class="card">
-      <div class="topo" style="margin-bottom:12px"><div><h2>Calendário de ${tituloCal(cal.mes).toLowerCase()} <${PillDe} mapa=${ST_CAL} v=${cal.status} /></h2><p class="sub" style="margin:4px 0 0">${cal.objetivo || 'Sem objetivo definido'}${cal.frequencia ? ' · ' + cal.frequencia : ''}${cal.prazo_aprovacao ? ' · prazo de aprovação ' + dd_mm(cal.prazo_aprovacao) : ''}</p></div>
+      <div class="topo" style="margin-bottom:12px"><div><h2>Calendário de ${tituloCal(cal.mes).toLowerCase()} <${PillDe} mapa=${ST_CAL} v=${cal.status} />${cal.origem === 'claude' && html` <${PillClaude} />`}</h2><p class="sub" style="margin:4px 0 0">${cal.objetivo || 'Sem objetivo definido'}${cal.frequencia ? ' · ' + cal.frequencia : ''}${cal.prazo_aprovacao ? ' · prazo de aprovação ' + dd_mm(cal.prazo_aprovacao) : ''}</p></div>
         <div class="acoes"><button class="btn pq" onClick=${() => setPrev(true)}>Ver como o cliente</button><button class="btn pq" onClick=${() => setMt({ cal })}>Editar dados</button>${(cal.status === 'rascunho' || rasc > 0) && html`<button class="btn pq pri" disabled=${env || !posts.length} onClick=${enviar}>${cal.status === 'rascunho' ? 'Enviar calendário para aprovação' : 'Enviar ' + rasc + ' post(s) novo(s)'}</button>`}</div></div>
       ${posts.length > 0 && html`<div class="cs-barra eq" role="img" aria-label="Andamento">${[['aprovado', '#10D885'], ['ajuste', '#E5484D'], ['aguardando', '#F5A122'], ['rascunho', '#DCE3DF']].map(([k, cor]) => html`<i style=${'width:' + (c[k] / posts.length * 100) + '%;background:' + cor}></i>`)}</div>
         <div class="cs-leg eq"><span style="--c:#10D885">${c.aprovado} aprovados</span><span style="--c:#E5484D">${c.ajuste} com ajuste</span><span style="--c:#F5A122">${c.aguardando} aguardando o cliente</span>${c.rascunho > 0 && html`<span style="--c:#B9C7C0">${c.rascunho} em rascunho</span>`}</div>`}
@@ -2488,6 +2489,28 @@ function EditorPost({ C, base, cid, onFechar, onMudou }) {
           ${!x.autor_agencia && html`<div><button class="lnk" onClick=${() => resolver(x, !x.resolvido)}>${x.resolvido ? 'Reabrir' : 'Marcar como resolvido'}</button></div>`}</div>`) : html`<span class="sub">Nenhum comentário.</span>`}</div>
         <div class="form" style="gap:8px;margin-top:10px"><textarea value=${resp} onInput=${e => setResp(e.target.value)} placeholder="Responder ao cliente" aria-label="Responder ao cliente" style="min-height:60px"></textarea><div><button class="btn pq" disabled=${!resp.trim()} onClick=${responder}>Responder</button></div></div></div>`}
     </div></div></div></div>`;
+}
+
+
+// ---------- automação do Claude (fila + rascunhos para revisar)
+const PillClaude = () => html`<span class="pill info" title="Rascunho criado pela rotina automática do Claude">Criado pelo Claude</span>`;
+const TIPO_FILA = { briefing: 'Briefing preenchido', solicitacao_nova: 'Solicitação nova', solicitacao_resposta: 'Resposta do cliente' };
+function PainelAutomacao() {
+  const [d, setD] = useState(null);
+  useEffect(() => { Promise.all([
+    sb.from('entregas').select('id,titulo,tipo,criado_em,clientes(nome_empresa),ads_planos(id)').eq('origem', 'claude').eq('status', 'rascunho').order('criado_em', { ascending: false }),
+    sb.from('calendarios').select('id,mes,criado_em,cliente_id,clientes(nome_empresa)').eq('origem', 'claude').eq('status', 'rascunho').order('criado_em', { ascending: false }),
+    sb.from('automacao_fila').select('id,tipo,status,resultado,criado_em,concluido_em,clientes(nome_empresa)').order('criado_em', { ascending: false }).limit(30)
+  ]).then(([e, c, f]) => setD({ ents: e.data || [], cals: c.data || [], fila: f.data || [] })); }, []);
+  if (!d) return null;
+  const pend = d.fila.filter(x => ['pendente', 'processando'].includes(x.status)), erros = d.fila.filter(x => x.status === 'erro'), ult = d.fila.filter(x => x.concluido_em).slice(0, 5);
+  const rasc = [...d.ents.map(e => ({ id: e.id, t: e.titulo, cli: e.clientes?.nome_empresa, quando: e.criado_em, href: e.ads_planos?.[0] ? '#/campanhas/planos/' + e.ads_planos[0].id : '#/aprovacoes' })),
+    ...d.cals.map(c => ({ id: c.id, t: 'Calendário de ' + tituloCal(c.mes).toLowerCase(), cli: c.clientes?.nome_empresa, quando: c.criado_em, href: '#/redes' }))].sort((a, b) => b.quando.localeCompare(a.quando));
+  if (!rasc.length && !d.fila.length) return null;
+  return html`<section class="card"><div class="topo" style="margin-bottom:8px"><h2>Automação do Claude</h2><span class="sub">Rodadas às 8h, 13h e 16h · ${pend.length} na fila${erros.length ? ' · ' + erros.length + ' com erro' : ''}</span></div>
+    ${rasc.length > 0 ? html`<p class="sub" style="margin:0 0 6px">Rascunhos esperando sua revisão (nada foi enviado ao cliente):</p><div class="lista">${rasc.map(r => html`<div><div><b>${r.t}</b><div class="sub">${r.cli} · criado em ${dataHora(r.quando)}</div></div><a class="btn pq pri" href=${r.href}>Revisar</a></div>`)}</div>` : html`<p class="vazio">Nenhum rascunho esperando revisão.</p>`}
+    ${(pend.length > 0 || ult.length > 0 || erros.length > 0) && html`<details style="margin-top:10px"><summary class="sub">Fila e últimas rodadas</summary><div class="lista">${[...pend, ...erros, ...ult.filter(x => x.status !== 'erro')].slice(0, 10).map(x => html`<div><div><b>${TIPO_FILA[x.tipo]} · ${x.clientes?.nome_empresa}</b><div class="sub">${x.resultado || 'Aguardando a próxima rodada'} · ${dataHora(x.concluido_em || x.criado_em)}</div></div><${Pill} k=${x.status === 'erro' ? 'bad' : x.status === 'feito' ? 'ok' : x.status === 'ignorado' ? 'info' : 'warn'}>${{ pendente: 'Na fila', processando: 'Processando', feito: 'Feito', ignorado: 'Para a equipe', erro: 'Erro' }[x.status]}<//></div>`)}</div></details>`}
+  </section>`;
 }
 
 function App() {
