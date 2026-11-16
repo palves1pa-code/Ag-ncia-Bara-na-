@@ -272,6 +272,8 @@ function Painel({ perfil, rota }) {
   else if (rota === '/aprovacoes') pag = html`<${Entregas} />`;
   else if (rota === '/redes') pag = html`<${Redes} />`;
   else if (rota === '/campanhas') pag = html`<${Campanhas} />`;
+  else if (rota === '/campanhas/planos') pag = html`<${PlanosAds} />`;
+  else if (rota.startsWith('/campanhas/planos/')) pag = html`<${EditorPlanoAds} key=${rota} id=${rota.split('/')[3]} />`;
   else if (rota === '/integracoes') pag = html`<${Integracoes} />`;
   else if (rota === '/equipe') pag = html`<${Equipe} perfil=${perfil} />`;
   else pag = html`<${Topo} titulo="Página não encontrada"><a class="btn" href="#/">Voltar</a><//>`;
@@ -796,6 +798,7 @@ const ST_ENT = { rascunho: ['Rascunho', 'neu'], aguardando_aprovacao: ['Aguardan
 const URL_PREVIAS = SB_URL + '/storage/v1/object/public/previas/';
 const linkPrevia = e => e.formato === 'link' ? e.url_externa : e.formato === 'html' ? location.origin + '/preview.html?f=' + encodeURIComponent(e.arquivo_path).replace(/%2F/g, '/') : URL_PREVIAS + e.arquivo_path;
 function Previa({ e, altura = '75vh' }) {
+  if (e.formato === 'plano') return html`<${PlanoAprovacao} e=${e} agencia=${true} />`;
   const url = linkPrevia(e);
   if (!url) return html`<p class="vazio">Sem arquivo.</p>`;
   if (e.formato === 'imagem') return html`<img src=${url} alt=${'Prévia: ' + e.titulo} style="width:100%;border-radius:12px;border:1px solid #DCE3DF" />`;
@@ -882,7 +885,7 @@ function Entregas() {
       ${vis.length ? vis.map(e => { const q = e.entrega_perguntas || []; return html`<tr><td><b>${e.clientes?.nome_empresa}</b></td><td>${e.titulo}<div class="sub">${dataHora(e.atualizado_em)}</div></td><td>${(TIPOS_ENT.find(t => t[0] === e.tipo) || [])[1]}</td><td>v${e.versao}</td><td>${q.length ? q.filter(x => x.resposta).length + ' de ' + q.length : '—'}</td><td><${PillDe} mapa=${ST_ENT} v=${e.status} /></td><td><button class="btn pq" onClick=${() => setAb(e)}>Abrir</button></td></tr>`; }) : html`<tr><td colspan="7" class="vazio">Nenhuma entrega neste filtro.</td></tr>`}
     </tbody></table></section>
     ${ab && html`<div class="fundo" onClick=${x => x.target === x.currentTarget && setAb(null)}><div class="modal" style="max-width:1100px" role="dialog" aria-modal="true" aria-label=${ab.titulo}>
-      <header style="flex-wrap:wrap;gap:10px"><div><h2>${ab.clientes?.nome_empresa} – ${ab.titulo}</h2><span class="sub">v${ab.versao} · <${PillDe} mapa=${ST_ENT} v=${ab.status} /></span></div><div class="acoes"><a class="btn pq" href=${linkPrevia(ab)} target="_blank" rel="noopener">Tela cheia</a><button class="btn pq" onClick=${() => setNova(ab)}>Nova versão / editar</button>${ab.status === 'rascunho' && html`<button class="btn pq pri" onClick=${() => status(ab, 'aguardando_aprovacao')}>Enviar ao cliente</button>`}<button class="btn pq" onClick=${() => setAb(null)}>Fechar</button></div></header>
+      <header style="flex-wrap:wrap;gap:10px"><div><h2>${ab.clientes?.nome_empresa} – ${ab.titulo}</h2><span class="sub">v${ab.versao} · <${PillDe} mapa=${ST_ENT} v=${ab.status} /></span></div><div class="acoes">${ab.formato !== 'plano' && html`<a class="btn pq" href=${linkPrevia(ab)} target="_blank" rel="noopener">Tela cheia</a><button class="btn pq" onClick=${() => setNova(ab)}>Nova versão / editar</button>${ab.status === 'rascunho' && html`<button class="btn pq pri" onClick=${() => status(ab, 'aguardando_aprovacao')}>Enviar ao cliente</button>`}`}<button class="btn pq" onClick=${() => setAb(null)}>Fechar</button></div></header>
       <${Previa} e=${ab} altura="60vh" />
       <div class="cols"><div class="c2"><section class="card"><h2>Comentários e ajustes</h2><${ComentariosEntrega} e=${ab} agencia=${true} /></section></div><div class="c1"><section class="card"><h2>Respostas do cliente</h2><${PerguntasEntrega} e=${ab} editavel=${false} /></section></div></div>
     </div></div>`}
@@ -893,19 +896,22 @@ function PortalAprovacoes({ onMudou }) {
   const carregar = () => sb.from('entregas').select('*, entrega_perguntas(id,resposta)').order('atualizado_em', { ascending: false }).then(r => { setL(r.data || []); setAb(a => a ? (r.data || []).find(x => x.id === a.id) || null : a); });
   useEffect(() => { carregar(); }, []);
   const decidir = async aprovar => {
-    if (!aprovar) { const n = await sb.from('entrega_comentarios').select('id', { count: 'exact', head: true }).eq('entrega_id', ab.id).eq('autor_agencia', false).eq('versao', ab.versao); if (!n.count) return toast('Escreva nos comentários o que precisa ajustar', 'erro'); }
+    if (!aprovar) {
+      const n = await sb.from('entrega_comentarios').select('id', { count: 'exact', head: true }).eq('entrega_id', ab.id).eq('autor_agencia', false).eq('versao', ab.versao);
+      const m = ab.formato === 'plano' ? await sb.from('ads_marcacoes').select('id, ads_planos!inner(entrega_id)', { count: 'exact', head: true }).eq('ads_planos.entrega_id', ab.id).eq('autor_agencia', false).eq('versao', ab.versao) : { count: 0 };
+      if (!n.count && !m.count) return toast(ab.formato === 'plano' ? 'Use “Comentar / pedir ajuste” nos itens ou escreva nos comentários o que precisa ajustar' : 'Escreva nos comentários o que precisa ajustar', 'erro');
+    }
     if (aprovar && !confirm('Confirmar a aprovação desta versão?')) return;
     setS(true); const r = await sb.from('entregas').update({ status: aprovar ? 'aprovado' : 'ajuste_solicitado' }).eq('id', ab.id); setS(false);
     if (ok(r, aprovar ? 'Aprovado! Obrigado.' : 'Pedido de ajuste enviado para a agência')) { carregar(); onMudou(); }
   };
   if (!l) return html`<${Carregando} />`;
-  if (ab) { const q = ab.entrega_perguntas || []; return html`<div class="topo"><div><button class="lnk" onClick=${() => setAb(null)}>← Voltar para aprovações</button><h1 style="margin-top:8px">${ab.titulo}</h1><p class="sub">Versão ${ab.versao} · <${PillDe} mapa=${ST_ENT} v=${ab.status} /></p></div><a class="btn" href=${linkPrevia(ab)} target="_blank" rel="noopener">Abrir em tela cheia</a></div>
-    ${ab.descricao && html`<section class="card"><p style="margin:0;white-space:pre-wrap">${ab.descricao}</p></section>`}
-    <${Previa} e=${ab} />
+  if (ab) { const q = ab.entrega_perguntas || []; return html`<div class="topo"><div><button class="lnk" onClick=${() => setAb(null)}>← Voltar para aprovações</button><h1 style="margin-top:8px">${ab.titulo}</h1><p class="sub">Versão ${ab.versao} · <${PillDe} mapa=${ST_ENT} v=${ab.status} /></p></div>${ab.formato !== 'plano' && html`<a class="btn" href=${linkPrevia(ab)} target="_blank" rel="noopener">Abrir em tela cheia</a>`}</div>
+    ${ab.formato === 'plano' ? html`<${PlanoAprovacao} e=${ab} agencia=${false} />` : html`${ab.descricao && html`<section class="card"><p style="margin:0;white-space:pre-wrap">${ab.descricao}</p></section>`}<${Previa} e=${ab} />`}
     <div class="cols"><div class="c2">
       ${q.length > 0 && html`<section class="card"><h2>Informações que faltam</h2><${PerguntasEntrega} e=${ab} editavel=${ab.status !== 'aprovado'} onMudou=${carregar} /></section>`}
       <section class="card"><h2>Comentários e ajustes</h2><${ComentariosEntrega} e=${ab} agencia=${false} /></section></div>
-      <div class="c1"><section class="card"><h2>Sua decisão</h2>${ab.status === 'aprovado' ? html`<p style="margin:0;color:#08744A;font-weight:600">Aprovado em ${dataHora(ab.aprovado_em)} ✓</p>` : html`<p class="sub" style="margin:0 0 12px">Navegue pela prévia, responda as perguntas e deixe seus comentários. Depois, aprove ou peça ajustes.</p><div class="acoes"><button class="btn pri" disabled=${s} onClick=${() => decidir(true)}>Aprovar</button><button class="btn" disabled=${s} onClick=${() => decidir(false)}>Pedir ajuste</button></div>`}</section></div></div>`; }
+      <div class="c1"><section class="card"><h2>Sua decisão</h2>${ab.status === 'aprovado' ? html`<p style="margin:0;color:#08744A;font-weight:600">Aprovado em ${dataHora(ab.aprovado_em)} ✓</p>` : html`<p class="sub" style="margin:0 0 12px">${ab.formato === 'plano' ? 'Revise o plano, use “Comentar / pedir ajuste” nos itens que quiser mudar e responda as perguntas. Depois, aprove ou peça ajustes.' : 'Navegue pela prévia, responda as perguntas e deixe seus comentários. Depois, aprove ou peça ajustes.'}</p><div class="acoes"><button class="btn pri" disabled=${s} onClick=${() => decidir(true)}>Aprovar</button><button class="btn" disabled=${s} onClick=${() => decidir(false)}>Pedir ajuste</button></div>`}</section></div></div>`; }
   return html`<div><h1>Aprovações</h1><p class="sub">Prévias e materiais para você revisar, completar e aprovar.</p></div>
     <section class="card">${l.length ? html`<div class="lista">${l.map(e => { const q = e.entrega_perguntas || []; const pend = q.filter(x => !x.resposta).length; return html`<div><div><b>${e.titulo}</b><div class="sub">${(TIPOS_ENT.find(t => t[0] === e.tipo) || [])[1]} · versão ${e.versao}${pend ? ' · ' + pend + ' pergunta(s) para responder' : ''}</div></div><div class="acoes"><${PillDe} mapa=${ST_ENT} v=${e.status} /><button class=${'btn pq' + (e.status === 'aguardando_aprovacao' ? ' pri' : '')} onClick=${() => setAb(e)}>Abrir</button></div></div>`; })}</div>` : html`<p class="vazio">Nada para aprovar no momento.</p>`}</section>`;
 }
@@ -1223,6 +1229,7 @@ function Campanhas() {
   return html`<${Topo} titulo="Campanhas" sub="Campanhas de tráfego pago de cada cliente. As métricas lançadas aqui aparecem no portal do cliente.">
       <label for="cc" class="sub">Cliente</label><select id="cc" style="width:auto" value=${cid} onChange=${e => setCid(e.target.value)}>${clientes.map(c => html`<option value=${c.id}>${c.nome_empresa}</option>`)}</select>
       <button class="btn pri" onClick=${() => setM({ plataforma: 'google', status: 'ativa' })}>Nova campanha</button><//>
+    <${AbasCampanhas} at="/campanhas" />
     <section class="card" style="background:#FFF8E8;border-color:#F2D9A0"><b>Lançamento manual por enquanto.</b> <span class="sub">Quando as integrações do Google Ads e da Meta forem liberadas, as métricas passam a entrar sozinhas. Até lá, lance o fechamento de cada mês (dá para pedir ao Claude, que lê as contas pelos conectores).</span></section>
     ${!l ? html`<${Carregando} />` : html`<section class="card tabela"><table><thead><tr><th>Campanha</th><th>Status</th><th>Último mês lançado</th><th>Investimento</th><th>Cliques</th><th>Conversões</th><th></th></tr></thead><tbody>
       ${l.length ? l.map(c => { const u = ultima(c.id); return html`<tr><td><b>${c.nome}</b><div class="sub">${PLAT[c.plataforma]}${c.objetivo ? ' · ' + c.objetivo : ''}</div></td>
@@ -1592,6 +1599,612 @@ function PortalOnboarding({ d, meus, feitos, cid, onMudou }) {
 }
 
 // ---------- raiz
+// ---------- planos de anúncios (Google Ads e Meta Ads) para aprovação
+const PLAT_ADS = { google: 'Google Ads', meta: 'Meta Ads' };
+const CORRESP = [['ampla', 'Ampla'], ['frase', 'Frase'], ['exata', 'Exata']];
+const CORRESP_EN = { ampla: 'Broad', frase: 'Phrase', exata: 'Exact' };
+const fmtKw = (t, c) => c === 'exata' ? '[' + t + ']' : c === 'frase' ? '"' + t + '"' : t;
+const lerKw = (linha, padrao) => {
+  let t = String(linha).trim(), c = padrao;
+  if (/^\[.*\]$/.test(t)) { c = 'exata'; t = t.slice(1, -1); } else if (/^".*"$/.test(t)) { c = 'frase'; t = t.slice(1, -1); }
+  return { termo: t.trim().replace(/\s+/g, ' '), correspondencia: c };
+};
+const tam = s => [...String(s ?? '').trim()].length;
+const LIM_G = { titulo: 30, descricao: 90, destaque: 25, snippet: 25, sl_texto: 25, sl_desc: 35 };
+const LIM_M = { texto_principal: 125, titulo: 40, descricao: 30 };
+const TIPOS_MT = [['texto_principal', 'Textos principais', 'Texto principal'], ['titulo', 'Títulos', 'Título'], ['descricao', 'Descrições', 'Descrição']];
+const SNIP_CAB = [['Serviços', 'Service catalog'], ['Tipos', 'Types'], ['Marcas', 'Brands'], ['Modelos', 'Models'], ['Cursos', 'Courses'], ['Diplomas', 'Degree programs'], ['Destinos', 'Destinations'], ['Estilos', 'Styles'], ['Bairros', 'Neighborhoods'], ['Comodidades', 'Amenities'], ['Seguros', 'Insurance coverage'], ['Hotéis em destaque', 'Featured hotels'], ['Programas', 'Shows']];
+const META_CTA = [['Saiba mais', 'LEARN_MORE'], ['Pedir orçamento', 'GET_QUOTE'], ['Fale conosco', 'CONTACT_US'], ['Cadastre-se', 'SIGN_UP'], ['Enviar mensagem', 'MESSAGE_PAGE'], ['Enviar mensagem no WhatsApp', 'WHATSAPP_MESSAGE'], ['Ligar agora', 'CALL_NOW'], ['Comprar agora', 'SHOP_NOW'], ['Baixar', 'DOWNLOAD'], ['Inscreva-se', 'SUBSCRIBE'], ['Reservar agora', 'BOOK_NOW'], ['Obter oferta', 'GET_OFFER'], ['Candidatar-se', 'APPLY_NOW'], ['Ver mais', 'SEE_MORE']];
+const META_OBJ = ['Reconhecimento', 'Tráfego', 'Engajamento', 'Cadastros', 'Promoção do app', 'Vendas'];
+const META_POS = ['Feed do Facebook', 'Feed do Instagram', 'Stories do Facebook', 'Stories do Instagram', 'Reels do Facebook', 'Reels do Instagram', 'Explorar do Instagram', 'Marketplace', 'Messenger', 'Audience Network'];
+const GENEROS = [['todos', 'Todos'], ['masculino', 'Masculino'], ['feminino', 'Feminino']];
+const FORMATOS_M = [['imagem', 'Imagem única'], ['carrossel', 'Carrossel'], ['video', 'Vídeo']];
+const PROPORCOES = [['1:1', '1:1 (quadrado)'], ['4:5', '4:5 (vertical, feed)'], ['9:16', '9:16 (Stories e Reels)']];
+const TITULO_PLANO = { google: 'Google Ads: palavras-chave e anúncios', meta: 'Meta Ads: públicos e anúncios' };
+const urlMidia = p => URL_PREVIAS + String(p).split('/').map(encodeURIComponent).join('/');
+const ehVideo = m => /^video\//.test(m.mime || '') || /\.(mp4|mov|webm)$/i.test(m.arquivo_path || '');
+const linhasDe = t => String(t || '').split('\n').map(x => x.trim()).filter(Boolean);
+const iniciais = n => String(n || '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toLowerCase() || 'ad';
+const normKw = t => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
+function conflitaNeg(kw, n) {
+  const k = normKw(kw), t = normKw(n.termo);
+  if (n.correspondencia === 'exata') return k === t;
+  if (n.correspondencia === 'frase') return (' ' + k + ' ').includes(' ' + t + ' ');
+  const ws = k.split(' '); return t.split(' ').every(w => ws.includes(w));
+}
+
+async function carregarPlanoAds(id) {
+  const { data: p } = await sb.from('ads_planos').select('*, entregas(*), clientes(nome_empresa)').eq('id', id).maybeSingle();
+  if (!p) return null;
+  const em = (t, col, ids) => ids.length ? sb.from(t).select('*').in(col, ids).order('ordem').order('id') : Promise.resolve({ data: [] });
+  const [g, neg, ext, conj, anu, marc, vers] = await Promise.all([
+    sb.from('ads_grupos').select('*').eq('plano_id', id).order('ordem').order('id'),
+    sb.from('ads_negativas').select('*').eq('plano_id', id).order('ordem').order('id'),
+    sb.from('ads_extensoes').select('*').eq('plano_id', id).order('ordem').order('id'),
+    sb.from('meta_conjuntos').select('*').eq('plano_id', id).order('ordem').order('id'),
+    sb.from('meta_anuncios').select('*').eq('plano_id', id).order('ordem').order('id'),
+    sb.from('ads_marcacoes').select('*').eq('plano_id', id).order('criado_em'),
+    sb.from('ads_planos_versoes').select('versao,snapshot').eq('plano_id', id).eq('versao', (p.entregas?.versao || 1) - 1).maybeSingle()]);
+  const gids = (g.data || []).map(x => x.id), aids = (anu.data || []).map(x => x.id);
+  const [pal, tex, vin, mtx, mid] = await Promise.all([em('ads_palavras', 'grupo_id', gids), em('ads_textos', 'grupo_id', gids),
+    aids.length ? sb.from('meta_anuncio_conjuntos').select('*').in('anuncio_id', aids) : Promise.resolve({ data: [] }),
+    em('meta_textos', 'anuncio_id', aids), em('meta_midias', 'anuncio_id', aids)]);
+  return { p, e: p.entregas, cliente: p.clientes?.nome_empresa || '', grupos: g.data || [], palavras: pal.data || [], textos: tex.data || [], negativas: neg.data || [], extensoes: ext.data || [],
+    conjuntos: conj.data || [], anuncios: anu.data || [], vinculos: vin.data || [], mtextos: mtx.data || [], midias: mid.data || [], marcas: marc.data || [], anterior: vers.data?.snapshot || null };
+}
+
+// itens alterados desde a versão anterior (para o selo "Alterado")
+function alteradosAds(P) {
+  const s = P.anterior; if (!s) return new Set();
+  const set = new Set();
+  const cmp = (atuais, antigos, campos) => { const m = new Map((antigos || []).map(x => [x.id, x])); for (const x of atuais) { const o = m.get(x.id); if (!o || campos.some(c => JSON.stringify(o[c] ?? null) !== JSON.stringify(x[c] ?? null))) set.add(x.id); } };
+  cmp(P.grupos, s.grupos, ['nome', 'descricao', 'url_final']);
+  cmp(P.palavras, s.palavras, ['termo', 'correspondencia', 'subgrupo']);
+  cmp(P.textos, s.textos, ['texto', 'fixado_posicao']);
+  cmp(P.negativas, s.negativas, ['termo', 'correspondencia', 'grupo_id']);
+  cmp(P.extensoes, s.extensoes, ['cabecalho', 'valores', 'texto', 'url', 'descricao1', 'descricao2']);
+  cmp(P.conjuntos, s.conjuntos, ['nome', 'verba_percentual', 'verba_valor', 'localizacao', 'idade_min', 'idade_max', 'genero', 'interesses', 'publicos_personalizados', 'exclusoes', 'posicionamentos', 'expansao_publico', 'observacoes']);
+  const comConj = P.anuncios.map(a => ({ ...a, conjuntos: P.vinculos.filter(v => v.anuncio_id === a.id).map(v => v.conjunto_id).sort() }));
+  cmp(comConj, (s.anuncios || []).map(a => ({ ...a, conjuntos: [...(a.conjuntos || [])].sort() })), ['nome', 'formato', 'descricao_criativo', 'cta', 'url_destino', 'utm', 'conjuntos']);
+  cmp(P.mtextos, s.meta_textos, ['texto']);
+  cmp(P.midias, s.midias, ['arquivo_path', 'proporcao', 'titulo_cartao', 'descricao_cartao', 'url_cartao']);
+  return set;
+}
+
+// pendências (bloqueiam o envio, iguais às do banco) e avisos
+function problemasAds(P) {
+  const r = [], av = [];
+  if (P.p.plataforma === 'meta') {
+    if (!P.conjuntos.length) r.push('O plano não tem conjuntos de anúncios');
+    if (!P.anuncios.length) r.push('O plano não tem anúncios');
+    for (const a of P.anuncios) {
+      const tx = P.mtextos.filter(x => x.anuncio_id === a.id), md = P.midias.filter(x => x.anuncio_id === a.id);
+      if (!tx.some(x => x.tipo === 'texto_principal')) r.push(a.nome + ': sem texto principal');
+      if (!P.vinculos.some(v => v.anuncio_id === a.id)) r.push(a.nome + ': não está em nenhum conjunto');
+      if (!md.length) r.push(a.nome + ': sem arte ou vídeo');
+      if (a.formato === 'carrossel') { const n = md.filter(m => m.proporcao !== '9:16').length; if (n < 2 || n > 10) r.push(a.nome + ': o carrossel precisa de 2 a 10 cartões (tem ' + n + ')'); }
+      if (!/^https?:\/\//i.test(a.url_destino || '') && !['Enviar mensagem', 'Enviar mensagem no WhatsApp', 'Ligar agora'].includes(a.cta)) r.push(a.nome + ': URL de destino ausente ou inválida');
+      if (a.formato === 'video' && md.length && !md.some(m => m.proporcao === '9:16')) av.push(a.nome + ': falta a versão 9:16 do vídeo para Stories e Reels');
+      for (const t of tx) if (tam(t.texto) > LIM_M[t.tipo]) av.push(a.nome + ': ' + (TIPOS_MT.find(x => x[0] === t.tipo) || [])[2] + ' com ' + tam(t.texto) + ' caracteres (recomendado até ' + LIM_M[t.tipo] + '); pode ser cortado');
+    }
+    const soma = P.conjuntos.reduce((s, c) => s + Number(c.verba_percentual || 0), 0);
+    if (P.conjuntos.some(c => c.verba_percentual != null) && Math.round(soma) !== 100) av.push('A divisão da verba entre os conjuntos soma ' + soma + '%');
+    return { r, av };
+  }
+  if (!P.grupos.length) r.push('O plano não tem grupos de anúncios');
+  for (const g of P.grupos) {
+    const tx = P.textos.filter(x => x.grupo_id === g.id), nt = tx.filter(x => x.tipo === 'titulo').length, nd = tx.filter(x => x.tipo === 'descricao').length;
+    if (nt < 3) r.push(g.nome + ': mínimo de 3 títulos (tem ' + nt + ')'); else if (nt < 8) av.push(g.nome + ': o Google recomenda pelo menos 8 títulos (tem ' + nt + ')');
+    if (nd < 2) r.push(g.nome + ': mínimo de 2 descrições (tem ' + nd + ')');
+    if (!P.palavras.some(k => k.grupo_id === g.id)) r.push(g.nome + ': sem palavras-chave');
+    if (!/^https?:\/\//i.test(g.url_final || '')) r.push(g.nome + ': URL final ausente ou inválida');
+    for (const t of tx) if (tam(t.texto) > LIM_G[t.tipo]) r.push(g.nome + ': ' + (t.tipo === 'titulo' ? 'título' : 'descrição') + ' acima do limite');
+  }
+  const vistos = new Set();
+  for (const k of P.palavras) { const ch = normKw(k.termo) + '|' + k.correspondencia; if (vistos.has(ch)) av.push('Palavra-chave repetida: ' + fmtKw(k.termo, k.correspondencia)); vistos.add(ch); }
+  for (const k of P.palavras) for (const n of P.negativas) if ((!n.grupo_id || n.grupo_id === k.grupo_id) && conflitaNeg(k.termo, n)) av.push(fmtKw(k.termo, k.correspondencia) + ' é bloqueada pela negativa ' + fmtKw(n.termo, n.correspondencia));
+  return { r, av };
+}
+
+// ---------- componentes compartilhados
+const Cont = ({ n, max, aviso }) => html`<span class=${'ads-cont' + (n > max ? (aviso ? ' av' : ' over') : '')} aria-label=${n + ' de ' + max + ' caracteres'}>${n}/${max}</span>`;
+const SeloAlt = ({ alt, id }) => alt && alt.has(id) ? html`<span class="ads-alt">Alterado</span>` : null;
+
+// campo de texto que salva ao sair, com contador ao vivo
+function TextoLim({ valor = '', max, aviso, area, onSalvar, ph, rotulo }) {
+  const [v, setV] = useState(valor); useEffect(() => setV(valor), [valor]);
+  const n = tam(v);
+  const sair = async () => {
+    if (v.trim() === String(valor).trim()) return;
+    if (!v.trim()) { setV(valor); return toast('O texto não pode ficar vazio', 'erro'); }
+    if (max && n > max && !aviso) { return toast('Passou do limite de ' + max + ' caracteres', 'erro'); }
+    const r = await onSalvar(v.trim()); if (r === false) setV(valor);
+  };
+  const p = { value: v, onInput: e => setV(e.target.value), onBlur: sair, placeholder: ph || '', 'aria-label': rotulo, class: max && n > max ? (aviso ? 'ads-in av' : 'ads-in over') : 'ads-in' };
+  return html`<div class="ads-campo">${area ? html`<textarea rows="2" ...${p}></textarea>` : html`<input ...${p} onKeyDown=${e => e.key === 'Enter' && e.target.blur()} />`}${max && html`<${Cont} n=${n} max=${max} aviso=${aviso} />`}</div>`;
+}
+
+// novo item com contador
+function NovoTexto({ max, aviso, area, ph, rotulo = 'Adicionar', onAdd, desab }) {
+  const [v, setV] = useState(''); const n = tam(v);
+  const add = async () => { if (!v.trim()) return; if (max && n > max && !aviso) return toast('Passou do limite de ' + max + ' caracteres', 'erro'); if (await onAdd(v.trim()) !== false) setV(''); };
+  const p = { value: v, onInput: e => setV(e.target.value), placeholder: ph || '', 'aria-label': ph, class: max && n > max ? (aviso ? 'ads-in av' : 'ads-in over') : 'ads-in', disabled: desab };
+  return html`<div class="ads-novo"><div class="ads-campo">${area ? html`<textarea rows="2" ...${p}></textarea>` : html`<input ...${p} onKeyDown=${e => e.key === 'Enter' && (e.preventDefault(), add())} />`}${max && html`<${Cont} n=${n} max=${max} aviso=${aviso} />`}</div><button class="btn pq" type="button" disabled=${desab || !v.trim()} onClick=${add}>${rotulo}</button></div>`;
+}
+
+// marcações do cliente sobre um item (lado da equipe e do cliente)
+function MarcasItem({ P, alvo, agencia, onMudou }) {
+  const l = P.marcas.filter(m => m.alvo_id === alvo);
+  if (!l.length) return null;
+  const resolver = async (m, v) => { if (ok(await sb.from('ads_marcacoes').update({ resolvido: v }).eq('id', m.id), v ? 'Marcado como resolvido' : 'Reaberto')) onMudou(); };
+  return html`<div class="ads-marcas">${l.map(m => html`<div class=${'ads-marca' + (m.resolvido ? ' ok' : '')}><span class="sub">${m.autor_agencia ? 'Agência' : 'Cliente'} · v${m.versao} · ${dataHora(m.criado_em)}${m.resolvido ? ' · resolvido' : ''}</span><p>${m.comentario}</p>
+    ${agencia && html`<button class="lnk" onClick=${() => resolver(m, !m.resolvido)}>${m.resolvido ? 'Reabrir' : 'Marcar como resolvido'}</button>`}</div>`)}</div>`;
+}
+
+// botão "Comentar / pedir ajuste" do cliente em cada item
+function AcaoItem({ P, tipo, alvo, ctx }) {
+  const [ab, setAb] = useState(false); const [t, setT] = useState(''); const [s, setS] = useState(false);
+  const l = P.marcas.filter(m => m.alvo_id === alvo), abertas = l.filter(m => !m.resolvido).length;
+  if (!ctx.podeMarcar && !l.length) return null;
+  const enviar = async e => { e.preventDefault(); if (!t.trim()) return; setS(true); const r = await sb.from('ads_marcacoes').insert({ plano_id: P.p.id, alvo_tipo: tipo, alvo_id: alvo, comentario: t.trim() }); setS(false); if (ok(r, 'Pedido de ajuste registrado')) { setT(''); setAb(false); ctx.onMudou(); } };
+  return html`<div class="ads-acao"><button class=${'ads-acao-btn' + (l.length ? ' tem' : '')} type="button" aria-expanded=${ab} onClick=${() => setAb(!ab)}>${l.length ? '💬 ' + l.length + (abertas ? '' : ' ✓') : 'Comentar / pedir ajuste'}</button>
+    ${ab && html`<div class="ads-acao-caixa">${l.map(m => html`<div class=${'ads-marca' + (m.resolvido ? ' ok' : '')}><span class="sub">${m.autor_agencia ? 'Agência' : 'Você'} · v${m.versao}${m.resolvido ? ' · resolvido pela agência' : ''}</span><p>${m.comentario}</p></div>`)}
+      ${ctx.podeMarcar && html`<form class="form" style="gap:8px" onSubmit=${enviar}><textarea value=${t} onInput=${e => setT(e.target.value)} placeholder="O que você quer mudar neste item?" aria-label="Comentário sobre este item" style="min-height:64px"></textarea><div class="acoes"><button class="btn pq pri" type="submit" disabled=${s || !t.trim()}>${s ? 'Enviando…' : 'Enviar'}</button><button class="btn pq" type="button" onClick=${() => setAb(false)}>Fechar</button></div></form>`}</div>`}</div>`;
+}
+
+// ---------- visão do plano (portal do cliente e prévia da equipe)
+function SerpPrevia({ P, g }) {
+  const tx = P.textos.filter(x => x.grupo_id === g.id), tits = tx.filter(x => x.tipo === 'titulo'), descs = tx.filter(x => x.tipo === 'descricao');
+  const [semente, setSemente] = useState(0);
+  const comb = (() => {
+    const emb = a => { const b = [...a]; let s = semente * 9301 + 49297; for (let i = b.length - 1; i > 0; i--) { s = (s * 9301 + 49297) % 233280; const j = Math.floor(s / 233280 * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+    const pos = [1, 2, 3].map(n => { const f = tits.filter(t => t.fixado_posicao === n); return f.length ? emb(f)[0] : null; });
+    const livres = emb(tits.filter(t => !t.fixado_posicao)); const ts = pos.map(x => x || livres.shift()).filter(Boolean);
+    return { ts: semente === 0 ? (pos.some(Boolean) ? ts : tits.slice(0, 3)) : ts, ds: semente === 0 ? descs.slice(0, 2) : emb(descs).slice(0, 2) };
+  })();
+  let url = ''; try { const u = new URL(g.url_final); url = u.hostname.replace(/^www\./, '') + (u.pathname.length > 1 ? ' › ' + u.pathname.split('/').filter(Boolean).join(' › ') : '') + (u.hash ? ' › ' + u.hash.slice(1) : ''); } catch (e) { url = g.url_final || 'site.com.br'; }
+  return html`<div class="ads-serp-box"><div class="ads-serp" aria-label="Prévia do anúncio no Google"><span class="pat">Patrocinado</span><div class="url">${url}</div><div class="tit">${comb.ts.map(t => t.texto).join(' | ') || 'Título do anúncio'}</div><div class="des">${comb.ds.map(d => d.texto).join(' ')}</div></div>
+    ${tits.length > 3 && html`<button class="lnk" onClick=${() => setSemente(semente + 1)}>Ver outra combinação</button>`}</div>`;
+}
+
+function TabelaTextos({ P, lista, max, alt, ctx, tipoAlvo = 'texto', fixado }) {
+  return html`<div class="ads-rolagem"><table class="ads-tab"><thead><tr><th class="n">#</th><th>Texto</th>${fixado && html`<th>Posição</th>`}<th class="c">Caracteres</th><th class="a"><span class="sr">Ações</span></th></tr></thead><tbody>
+    ${lista.map((t, i) => html`<tr><td class="n">${i + 1}</td><td>${t.texto} <${SeloAlt} alt=${alt} id=${t.id} /></td>${fixado && html`<td class="sub">${t.fixado_posicao ? 'Fixado na ' + t.fixado_posicao + 'ª' : '—'}</td>`}<td class="c"><${Cont} n=${tam(t.texto)} max=${max} aviso=${tipoAlvo === 'meta_texto'} /></td><td class="a"><${AcaoItem} P=${P} tipo=${tipoAlvo} alvo=${t.id} ctx=${ctx} /></td></tr>`)}
+  </tbody></table></div>`;
+}
+
+function VisaoGoogle({ P, ctx, alt }) {
+  const { p } = P; const exts = t => P.extensoes.filter(x => x.tipo === t);
+  return html`
+    <h2 class="ads-h2">Estrutura</h2>
+    <div class="ads-kpis">
+      <div class="ads-card kpi"><b>1 campanha</b><span>Rede de ${p.rede || 'Pesquisa'} do Google</span></div>
+      ${p.verba_mensal != null && html`<div class="ads-card kpi"><b>${brl(p.verba_mensal).replace(',00', '')}/mês</b><span>cerca de ${brl(p.verba_mensal / 30.4).replace(/,\d\d$/, '')} por dia</span></div>`}
+      <div class="ads-card kpi"><b>${P.grupos.length} grupo${P.grupos.length === 1 ? '' : 's'}</b><span>${P.grupos.map(g => g.nome).join(' · ')}</span></div>
+      ${(p.horario || p.regiao) && html`<div class="ads-card kpi"><b>${p.horario || 'Todos os dias'}</b><span>${[p.regiao, p.idioma && p.idioma.toLowerCase()].filter(Boolean).join(' · ')}</span></div>`}
+    </div>
+    ${(p.estrategia_lance || p.observacoes) && html`<div class="ads-card">${p.estrategia_lance && html`<p style="margin:0"><b>Estratégia de lances:</b> ${p.estrategia_lance}</p>`}${p.observacoes && html`<p style="margin:6px 0 0;white-space:pre-wrap">${p.observacoes}</p>`}</div>`}
+    <div class="ads-cols">${P.grupos.map((g, i) => html`<div class="ads-card"><h3>Grupo ${i + 1} · ${g.nome} <${SeloAlt} alt=${alt} id=${g.id} /></h3>${g.descricao && html`<p class="ads-lead" style="margin:6px 0 0">${g.descricao}</p>`}</div>`)}</div>
+    ${P.grupos.map((g, i) => { const ks = P.palavras.filter(k => k.grupo_id === g.id); const subs = []; ks.forEach(k => { const s = k.subgrupo || ''; let b = subs.find(x => x[0] === s); if (!b) subs.push(b = [s, []]); b[1].push(k); });
+      return html`<h2 class="ads-h2">Palavras-chave · Grupo ${i + 1} · ${g.nome}</h2><p class="ads-lead">${ks.length} palavra${ks.length === 1 ? '' : 's'}-chave. Ampla = buscas relacionadas; Frase = a busca contém a expressão; Exata = a expressão ou variações muito próximas.</p>
+      <div class="ads-rolagem"><table class="ads-tab"><thead><tr><th>Palavra-chave</th><th>Correspondência</th><th class="a"><span class="sr">Ações</span></th></tr></thead><tbody>
+        ${subs.map(([s, l]) => html`${s && html`<tr class="sub"><td colspan="3">${s}</td></tr>`}${l.map(k => html`<tr><td><code class="ads-kw">${fmtKw(k.termo, k.correspondencia)}</code> <${SeloAlt} alt=${alt} id=${k.id} /></td><td>${(CORRESP.find(c => c[0] === k.correspondencia) || [])[1]}</td><td class="a"><${AcaoItem} P=${P} tipo="palavra" alvo=${k.id} ctx=${ctx} /></td></tr>`)}`)}
+      </tbody></table></div>`; })}
+    ${P.negativas.length > 0 && html`<h2 class="ads-h2">Palavras negativas</h2><p class="ads-lead">O anúncio não aparece para buscas com estes termos, que não costumam gerar clientes.</p>
+      <div class="ads-card">${P.negativas.map(n => html`<div class="ads-neg-linha"><span class="ads-tag neg">${fmtKw(n.termo, n.correspondencia)}</span>${n.grupo_id && html`<span class="sub">só no grupo ${(P.grupos.find(g => g.id === n.grupo_id) || {}).nome}</span>`}<${SeloAlt} alt=${alt} id=${n.id} /><${AcaoItem} P=${P} tipo="negativa" alvo=${n.id} ctx=${ctx} /></div>`)}</div>`}
+    ${P.grupos.map((g, i) => { const tx = P.textos.filter(x => x.grupo_id === g.id); const tits = tx.filter(x => x.tipo === 'titulo'), descs = tx.filter(x => x.tipo === 'descricao');
+      return html`<h2 class="ads-h2">Anúncio · Grupo ${i + 1} · ${g.nome}</h2><p class="ads-lead">O Google combina os títulos e as descrições e mostra as combinações que funcionam melhor. Exemplo de como pode aparecer:</p>
+      <${SerpPrevia} P=${P} g=${g} />
+      <h3 class="ads-h3">${tits.length} título${tits.length === 1 ? '' : 's'} (até 30 caracteres)</h3><${TabelaTextos} P=${P} lista=${tits} max=${30} alt=${alt} ctx=${ctx} fixado=${tits.some(t => t.fixado_posicao)} />
+      <h3 class="ads-h3">${descs.length} descriç${descs.length === 1 ? 'ão' : 'ões'} (até 90 caracteres)</h3><${TabelaTextos} P=${P} lista=${descs} max=${90} alt=${alt} ctx=${ctx} />`; })}
+    ${exts('snippet').length > 0 && html`<h2 class="ads-h2">Snippets estruturados</h2><p class="ads-lead">Aparecem abaixo do anúncio como uma lista de itens.</p>${exts('snippet').map(x => html`<div class="ads-card ads-linha-acao"><div><b>${x.cabecalho}:</b> ${(x.valores || []).join(', ')} <${SeloAlt} alt=${alt} id=${x.id} /></div><${AcaoItem} P=${P} tipo="extensao" alvo=${x.id} ctx=${ctx} /></div>`)}`}
+    ${exts('destaque').length > 0 && html`<h2 class="ads-h2">Frases de destaque</h2><p class="ads-lead">Até 25 caracteres cada, exibidas junto ao anúncio.</p><div class="ads-card">${exts('destaque').map(x => html`<div class="ads-neg-linha"><span class="ads-tag">${x.texto}</span><span class="sub">${tam(x.texto)}/25</span><${SeloAlt} alt=${alt} id=${x.id} /><${AcaoItem} P=${P} tipo="extensao" alvo=${x.id} ctx=${ctx} /></div>`)}</div>`}
+    ${exts('sitelink').length > 0 && html`<h2 class="ads-h2">Sitelinks</h2><p class="ads-lead">Links extras para páginas do site, exibidos abaixo do anúncio.</p><div class="ads-cols">${exts('sitelink').map(x => html`<div class="ads-card"><b style="color:#1a0dab">${x.texto}</b> <${SeloAlt} alt=${alt} id=${x.id} /><div class="sub">${[x.descricao1, x.descricao2].filter(Boolean).join(' · ')}</div><div class="sub" style="word-break:break-all">${x.url}</div><${AcaoItem} P=${P} tipo="extensao" alvo=${x.id} ctx=${ctx} /></div>`)}</div>`}`;
+}
+
+// simulações de Feed do Instagram, Feed do Facebook e Stories/Reels
+function MidiaMock({ m, cls }) {
+  if (!m) return html`<div class=${'mk-vazio ' + (cls || '')}><span>Arte ainda não enviada</span></div>`;
+  return ehVideo(m) ? html`<video class=${cls} src=${urlMidia(m.arquivo_path)} controls playsinline preload="metadata" aria-label="Vídeo do anúncio"></video>` : html`<img class=${cls} src=${urlMidia(m.arquivo_path)} alt="Arte do anúncio" loading="lazy" />`;
+}
+function MockMeta({ P, a }) {
+  const tx = tipo => P.mtextos.filter(x => x.anuncio_id === a.id && x.tipo === tipo);
+  const prin = tx('texto_principal'), tits = tx('titulo'), descs = tx('descricao');
+  const md = P.midias.filter(m => m.anuncio_id === a.id);
+  const feed = md.filter(m => m.proporcao !== '9:16'), story = md.find(m => m.proporcao === '9:16') || feed[0];
+  const [i, setI] = useState(0); const [j, setJ] = useState(0); const [k, setK] = useState(0); const [c, setC] = useState(0);
+  const tp = prin[i % (prin.length || 1)]?.texto || '', ti = tits[j % (tits.length || 1)]?.texto || '', de = descs[k % (descs.length || 1)]?.texto || '';
+  const carrossel = a.formato === 'carrossel' && feed.length > 1, atual = carrossel ? feed[c % feed.length] : feed[0];
+  const cta = a.cta || 'Saiba mais', marca = P.cliente, av = iniciais(marca);
+  let dom = ''; try { dom = new URL(a.url_destino).hostname.replace(/^www\./, '').toUpperCase(); } catch (e) { }
+  const tituloCard = carrossel ? (atual?.titulo_cartao || ti) : ti, descCard = carrossel ? (atual?.descricao_cartao || de) : de;
+  const Nav = () => carrossel ? html`<div class="mk-nav"><button aria-label="Cartão anterior" onClick=${() => setC((c - 1 + feed.length) % feed.length)}>‹</button><span>${(c % feed.length) + 1}/${feed.length}</span><button aria-label="Próximo cartão" onClick=${() => setC((c + 1) % feed.length)}>›</button></div>` : null;
+  const Sel = ({ l, v, set, nome }) => l.length > 1 ? html`<div class="mk-sel" role="group" aria-label=${nome}><span>${nome}:</span>${l.map((_, n) => html`<button class=${v % l.length === n ? 'on' : ''} aria-pressed=${v % l.length === n} onClick=${() => set(n)}>${n + 1}</button>`)}</div>` : null;
+  return html`<div>
+    ${(prin.length > 1 || tits.length > 1 || descs.length > 1) && html`<div class="mk-sels"><${Sel} l=${prin} v=${i} set=${setI} nome="Texto principal" /><${Sel} l=${tits} v=${j} set=${setJ} nome="Título" /><${Sel} l=${descs} v=${k} set=${setK} nome="Descrição" /></div>`}
+    <div class="mk">
+      <div><p class="mk-rot">Feed do Instagram</p><div class="mk-post"><div class="mk-topo"><span class="mk-av">${av}</span><div><b>${marca}</b><small>Patrocinado</small></div><span class="mk-dots">···</span></div>
+        <div class="mk-midia"><${MidiaMock} m=${atual} /><${Nav} /></div><div class="mk-cta-ig"><span>${cta}</span><span>›</span></div><div class="mk-acoes-ig">♡ 💬 ➤</div><p class="mk-txt"><b>${marca}</b> ${tp}</p></div></div>
+      <div><p class="mk-rot">Feed do Facebook</p><div class="mk-post"><div class="mk-topo"><span class="mk-av">${av}</span><div><b>${marca}</b><small>Patrocinado · 🌐</small></div><span class="mk-dots">···</span></div>
+        <p class="mk-txt">${tp}</p><div class="mk-midia"><${MidiaMock} m=${atual} /><${Nav} /></div><div class="mk-rodape"><div><small>${dom}</small><b>${tituloCard}</b><span>${descCard}</span></div><span class="mk-btn-fb">${cta}</span></div></div></div>
+      <div><p class="mk-rot">Stories e Reels</p><div class="mk-story"><${MidiaMock} m=${story} cls="mk-story-midia" /><div class="mk-st-top"><span class="mk-av">${av}</span><div><b>${marca}</b><small>Patrocinado</small></div></div><div class="mk-st-cta">⌃<br />${cta}</div></div></div>
+    </div></div>`;
+}
+
+const dlItem = (rot, val) => val && (!Array.isArray(val) || val.length) ? html`<dt>${rot}</dt><dd>${Array.isArray(val) ? val.join(', ') : val}</dd>` : null;
+function VisaoMeta({ P, ctx, alt }) {
+  const { p } = P;
+  return html`
+    <h2 class="ads-h2">Estrutura da campanha</h2>
+    <div class="ads-kpis">
+      ${p.objetivo && html`<div class="ads-card kpi"><b>${p.objetivo}</b><span>Objetivo da campanha</span></div>`}
+      ${p.verba_mensal != null && html`<div class="ads-card kpi"><b>${brl(p.verba_mensal).replace(',00', '')}/mês</b><span>cerca de ${brl(p.verba_mensal / 30.4).replace(/,\d\d$/, '')} por dia</span></div>`}
+      <div class="ads-card kpi"><b>${P.conjuntos.length} conjunto${P.conjuntos.length === 1 ? '' : 's'}</b><span>${P.anuncios.length} anúncio${P.anuncios.length === 1 ? '' : 's'}</span></div>
+      ${p.otimizacao && html`<div class="ads-card kpi"><b>Otimização</b><span>${p.otimizacao}</span></div>`}
+    </div>
+    <div class="ads-card"><dl class="ads-dl">${dlItem('Campanha', p.nome)}${dlItem('Região', p.regiao)}${dlItem('Medição', p.medicao)}${dlItem('Observações', p.observacoes)}</dl></div>
+    <h2 class="ads-h2">Conjuntos de anúncios e públicos</h2><p class="ads-lead">Quem vai ver os anúncios, onde e com qual parte da verba.</p>
+    ${P.conjuntos.map((c, i) => html`<div class="ads-card"><div class="ads-linha-acao"><h3>Conjunto ${i + 1} · ${c.nome}${c.verba_percentual != null && html`<span class="ads-badge">${Number(c.verba_percentual)}% da verba</span>`}${c.verba_valor != null && html`<span class="ads-badge">${brl(c.verba_valor)}</span>`} <${SeloAlt} alt=${alt} id=${c.id} /></h3><${AcaoItem} P=${P} tipo="conjunto" alvo=${c.id} ctx=${ctx} /></div>
+      <dl class="ads-dl">${dlItem('Públicos personalizados', c.publicos_personalizados)}${dlItem('Exclusões', c.exclusoes)}${dlItem('Localização', c.localizacao)}${(c.idade_min || c.idade_max) && dlItem('Idade', (c.idade_min || 18) + ' a ' + (c.idade_max ? (c.idade_max === 65 ? '65+' : c.idade_max) : '65+') + ' anos')}${c.genero !== 'todos' && dlItem('Gênero', (GENEROS.find(g => g[0] === c.genero) || [])[1])}${dlItem('Interesses', c.interesses)}${dlItem('Expansão de público', c.expansao_publico ? 'Ativada' : 'Desativada')}${dlItem('Posicionamentos', c.posicionamentos)}${dlItem('Observações', c.observacoes)}</dl></div>`)}
+    ${P.anuncios.map((a, i) => { const conj = P.vinculos.filter(v => v.anuncio_id === a.id).map(v => P.conjuntos.findIndex(c => c.id === v.conjunto_id) + 1).filter(Boolean).sort();
+      const md = P.midias.filter(m => m.anuncio_id === a.id);
+      return html`<div class="ads-linha-acao" style="margin-top:36px"><h2 class="ads-h2" style="margin:0">Anúncio ${i + 1} · ${a.nome} <${SeloAlt} alt=${alt} id=${a.id} /></h2><${AcaoItem} P=${P} tipo="anuncio" alvo=${a.id} ctx=${ctx} /></div>
+      <p class="ads-lead">${(FORMATOS_M.find(f => f[0] === a.formato) || [])[1]}${a.formato === 'carrossel' ? ' (' + md.filter(m => m.proporcao !== '9:16').length + ' cartões)' : ''} · exibido em: ${conj.length ? (conj.length > 1 ? 'Conjuntos ' : 'Conjunto ') + conj.join(' e ') : '—'} · botão: <b>${a.cta || 'Saiba mais'}</b>${a.url_destino && html` · destino: <code>${a.url_destino.replace(/^https?:\/\/(www\.)?/, '')}</code>`}</p>
+      ${a.descricao_criativo && html`<div class="ads-card"><b>Criativo:</b> ${a.descricao_criativo}</div>`}
+      <${MockMeta} P=${P} a=${a} />
+      ${md.length > 0 && html`<h3 class="ads-h3">Artes e vídeos para aprovar</h3><div class="ads-midias">${md.map((m, n) => html`<div class="ads-midia-item"><${MidiaMock} m=${m} cls="ads-thumb" /><div class="sub">${a.formato === 'carrossel' && m.proporcao !== '9:16' ? 'Cartão ' + (md.filter(x => x.proporcao !== '9:16').indexOf(m) + 1) + ' · ' : ''}${m.proporcao}${m.titulo_cartao ? ' · ' + m.titulo_cartao : ''} <${SeloAlt} alt=${alt} id=${m.id} /></div><${AcaoItem} P=${P} tipo="midia" alvo=${m.id} ctx=${ctx} /></div>`)}</div>`}
+      ${TIPOS_MT.map(([t, rot]) => { const l = P.mtextos.filter(x => x.anuncio_id === a.id && x.tipo === t); return l.length ? html`<h3 class="ads-h3">${rot} (recomendado até ${LIM_M[t]} caracteres)</h3><${TabelaTextos} P=${P} lista=${l} max=${LIM_M[t]} alt=${alt} ctx=${ctx} tipoAlvo="meta_texto" />` : null; })}`; })}`;
+}
+
+function VisaoPlano({ P, ctx }) {
+  const alt = alteradosAds(P);
+  return html`<div class="ads">
+    <header class="ads-capa"><small>Agência Baraúna · Proposta para aprovação</small><h1>${P.e?.titulo || TITULO_PLANO[P.p.plataforma]}</h1>${P.e?.descricao && html`<p>${P.e.descricao}</p>`}
+      ${alt.size > 0 && html`<p class="ads-capa-alt">Versão ${P.e.versao}: ${alt.size} ite${alt.size === 1 ? 'm mudou' : 'ns mudaram'} desde a versão anterior (marcados como “Alterado”).</p>`}</header>
+    ${P.p.plataforma === 'meta' ? html`<${VisaoMeta} P=${P} ctx=${ctx} alt=${alt} />` : html`<${VisaoGoogle} P=${P} ctx=${ctx} alt=${alt} />`}
+  </div>`;
+}
+
+// plano dentro de Aprovações (cliente e equipe)
+function PlanoAprovacao({ e, agencia, onMarcou }) {
+  const [P, setP] = useState(undefined);
+  const carregar = async () => { const { data } = await sb.from('ads_planos').select('id').eq('entrega_id', e.id).maybeSingle(); setP(data ? await carregarPlanoAds(data.id) : null); };
+  useEffect(() => { carregar(); }, [e.id, e.versao, e.status]);
+  if (P === undefined) return html`<${Carregando} />`;
+  if (!P) return html`<p class="vazio">Plano não encontrado.</p>`;
+  const ctx = { podeMarcar: !agencia && ['aguardando_aprovacao', 'ajuste_solicitado'].includes(e.status), onMudou: () => { carregar(); onMarcou && onMarcou(); } };
+  return html`${agencia && html`<div class="acoes"><a class="btn pq pri" href=${'#/campanhas/planos/' + P.p.id}>Abrir no editor</a></div>`}<${VisaoPlano} P=${P} ctx=${ctx} />`;
+}
+
+// ---------- exportação
+function baixarCSV(nome, linhas) {
+  const cel = c => { const s = c == null ? '' : String(c); return /[",\n\r;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = '﻿' + linhas.map(l => l.map(cel).join(',')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+const DIAS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function agendaEditor(h) {
+  const t = String(h || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const horas = /(\d{1,2})(?::(\d{2}))?\s*h?\s*(?:as|a|-|ate)\s*(\d{1,2})(?::(\d{2}))?\s*h/.exec(t);
+  if (!horas) return '';
+  const d = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6 };
+  let dias;
+  const f = /(dom|seg|ter|qua|qui|sex|sab)\w*\.?\s*(?:a|-|ate)\s*(dom|seg|ter|qua|qui|sex|sab)/.exec(t);
+  if (f) { dias = []; for (let x = d[f[1]]; ; x = (x + 1) % 7) { dias.push(x); if (x === d[f[2]] || dias.length > 7) break; } }
+  else if (/todos os dias|diariamente/.test(t)) dias = [0, 1, 2, 3, 4, 5, 6]; else return '';
+  const hh = (a, b) => String(a).padStart(2, '0') + ':' + (b || '00');
+  return dias.map(x => '(' + DIAS_EN[x] + '[' + hh(horas[1], horas[2]) + '-' + hh(horas[3], horas[4]) + '])').join(';');
+}
+function lanceEditor(t) { t = String(t || '').toLowerCase(); return /cpa/.test(t) ? 'Target CPA' : /roas/.test(t) ? 'Target ROAS' : /convers/.test(t) ? 'Maximize conversions' : /clique/.test(t) ? 'Maximize clicks' : /manual|cpc/.test(t) ? 'Manual CPC' : ''; }
+function exportarGoogle(P) {
+  const { p } = P, camp = p.nome;
+  const H = ['Campaign', 'Campaign Type', 'Networks', 'Budget', 'Bid Strategy Type', 'Languages', 'Ad Schedule', 'Campaign Status', 'Location', 'Ad Group', 'Ad Group Status', 'Keyword', 'Criterion Type',
+    ...Array.from({ length: 15 }, (_, i) => 'Headline ' + (i + 1)), ...Array.from({ length: 15 }, (_, i) => 'Headline ' + (i + 1) + ' position'), ...Array.from({ length: 4 }, (_, i) => 'Description ' + (i + 1)),
+    'Final URL', 'Callout text', 'Header', 'Snippet Values', 'Link Text', 'Description line 1', 'Description line 2'];
+  const L = [H]; const lin = o => L.push(H.map(h => o[h] ?? ''));
+  lin({ Campaign: camp, 'Campaign Type': 'Search', Networks: 'Google Search', Budget: p.verba_mensal ? (p.verba_mensal / 30.4).toFixed(2) : '', 'Bid Strategy Type': lanceEditor(p.estrategia_lance),
+    Languages: /portug/i.test(p.idioma || 'Português') ? 'pt' : '', 'Ad Schedule': agendaEditor(p.horario), 'Campaign Status': 'Paused' });
+  String(p.regiao || '').split(/[;,]/).map(x => x.trim()).filter(Boolean).forEach(r => lin({ Campaign: camp, Location: /^brasil$/i.test(r) ? 'Brazil' : r }));
+  for (const g of P.grupos) {
+    lin({ Campaign: camp, 'Ad Group': g.nome, 'Ad Group Status': 'Enabled' });
+    for (const k of P.palavras.filter(x => x.grupo_id === g.id)) lin({ Campaign: camp, 'Ad Group': g.nome, Keyword: k.termo, 'Criterion Type': CORRESP_EN[k.correspondencia] });
+    for (const n of P.negativas.filter(x => x.grupo_id === g.id)) lin({ Campaign: camp, 'Ad Group': g.nome, Keyword: n.termo, 'Criterion Type': 'Negative ' + CORRESP_EN[n.correspondencia] });
+    const tx = P.textos.filter(x => x.grupo_id === g.id), o = { Campaign: camp, 'Ad Group': g.nome, 'Final URL': g.url_final };
+    tx.filter(x => x.tipo === 'titulo').forEach((t, i) => { o['Headline ' + (i + 1)] = t.texto; if (t.fixado_posicao) o['Headline ' + (i + 1) + ' position'] = t.fixado_posicao; });
+    tx.filter(x => x.tipo === 'descricao').forEach((t, i) => { o['Description ' + (i + 1)] = t.texto; });
+    lin(o);
+  }
+  for (const n of P.negativas.filter(x => !x.grupo_id)) lin({ Campaign: camp, Keyword: n.termo, 'Criterion Type': 'Campaign Negative ' + CORRESP_EN[n.correspondencia] });
+  for (const x of P.extensoes) {
+    if (x.tipo === 'destaque') lin({ Campaign: camp, 'Callout text': x.texto });
+    else if (x.tipo === 'snippet') lin({ Campaign: camp, Header: (SNIP_CAB.find(c => c[0] === x.cabecalho) || [0, x.cabecalho])[1], 'Snippet Values': (x.valores || []).join(';') });
+    else lin({ Campaign: camp, 'Link Text': x.texto, 'Description line 1': x.descricao1, 'Description line 2': x.descricao2, 'Final URL': x.url });
+  }
+  baixarCSV('google-ads-editor-' + (slug(P.cliente) || 'cliente') + '-v' + (P.e?.versao || 1) + '.csv', L);
+}
+function exportarMeta(P) {
+  const { p } = P, J = l => (l || []).join(' | ');
+  const H = ['Campanha', 'Objetivo', 'Otimização', 'Medição', 'Verba mensal (R$)', 'Conjunto', 'Verba do conjunto', 'Localização', 'Idade', 'Gênero', 'Interesses', 'Públicos personalizados', 'Exclusões', 'Posicionamentos', 'Expansão de público',
+    'Anúncio', 'Formato', 'Botão (CTA)', 'CTA na API da Meta', 'URL de destino', 'Parâmetros UTM', 'Textos principais', 'Títulos', 'Descrições', 'Artes e vídeos (links)', 'Cartões do carrossel'];
+  const L = [H];
+  const linhaConj = c => c ? [c.nome, c.verba_percentual != null ? Number(c.verba_percentual) + '%' : c.verba_valor != null ? c.verba_valor : '', c.localizacao, (c.idade_min || c.idade_max) ? (c.idade_min || 18) + '-' + (c.idade_max || '65+') : '', (GENEROS.find(g => g[0] === c.genero) || [])[1], J(c.interesses), J(c.publicos_personalizados), J(c.exclusoes), J(c.posicionamentos), c.expansao_publico ? 'Sim' : 'Não'] : Array(10).fill('');
+  const base = [p.nome, p.objetivo, p.otimizacao, p.medicao, p.verba_mensal];
+  const usados = new Set();
+  for (const a of P.anuncios) {
+    const tx = t => J(P.mtextos.filter(x => x.anuncio_id === a.id && x.tipo === t).map(x => x.texto)), md = P.midias.filter(m => m.anuncio_id === a.id);
+    const ad = [a.nome, (FORMATOS_M.find(f => f[0] === a.formato) || [])[1], a.cta, (META_CTA.find(c => c[0] === a.cta) || [])[1] || '', a.url_destino, a.utm, tx('texto_principal'), tx('titulo'), tx('descricao'),
+      J(md.map(m => m.proporcao + ': ' + urlMidia(m.arquivo_path))), a.formato === 'carrossel' ? J(md.filter(m => m.proporcao !== '9:16').map((m, i) => (i + 1) + ') ' + [m.titulo_cartao, m.descricao_cartao, m.url_cartao].filter(Boolean).join(' / '))) : ''];
+    const cs = P.vinculos.filter(v => v.anuncio_id === a.id).map(v => P.conjuntos.find(c => c.id === v.conjunto_id)).filter(Boolean);
+    (cs.length ? cs : [null]).forEach(c => { if (c) usados.add(c.id); L.push([...base, ...linhaConj(c), ...ad]); });
+  }
+  P.conjuntos.filter(c => !usados.has(c.id)).forEach(c => L.push([...base, ...linhaConj(c), ...Array(11).fill('')]));
+  baixarCSV('meta-ads-referencia-' + (slug(P.cliente) || 'cliente') + '-v' + (P.e?.versao || 1) + '.csv', L);
+}
+
+// ---------- tela da equipe: lista de planos
+const AbasCampanhas = ({ at }) => html`<div class="tabs" role="group" aria-label="Campanhas">${[['/campanhas', 'Métricas'], ['/campanhas/planos', 'Planos de anúncios']].map(([r, t]) => html`<button class=${at === r ? 'on' : ''} onClick=${() => ir(r)}>${t}</button>`)}</div>`;
+function PlanosAds() {
+  const clientes = useLista('clientes', 'id,nome_empresa,status');
+  const [l, setL] = useState(null); const [novo, setNovo] = useState(false); const [dup, setDup] = useState(null); const [f, setF] = useState('');
+  const carregar = () => sb.from('ads_planos').select('id,nome,plataforma,atualizado_em,cliente_id,clientes(nome_empresa),entregas(id,status,versao,entrega_perguntas(id,resposta)),ads_marcacoes(id,resolvido)').order('atualizado_em', { ascending: false }).then(r => setL(r.data || []));
+  useEffect(() => { carregar(); }, []);
+  const criar = async v => {
+    const { data: e, error } = await sb.from('entregas').insert({ cliente_id: v.cliente_id, tipo: 'trafego', titulo: TITULO_PLANO[v.plataforma], formato: 'plano', status: 'rascunho', descricao: v.plataforma === 'google' ? 'Campanha de Pesquisa no Google. Revise as palavras-chave e os anúncios, responda as perguntas e comente o que quiser ajustar.' : 'Campanha no Facebook e no Instagram. Revise os públicos, os anúncios e as artes, responda as perguntas e comente o que quiser ajustar.' }).select('id').single();
+    if (error) return ok({ error });
+    const r = await sb.from('ads_planos').insert({ entrega_id: e.id, cliente_id: v.cliente_id, plataforma: v.plataforma, nome: v.nome, rede: v.plataforma === 'google' ? 'Pesquisa' : 'Facebook e Instagram' }).select('id').single();
+    if (r.error) { await sb.from('entregas').delete().eq('id', e.id); return ok(r); }
+    toast('Plano criado'); ir('/campanhas/planos/' + r.data.id);
+  };
+  const duplicar = async v => { const r = await sb.rpc('ads_duplicar', { p_plano: dup.id, p_cliente: v.cliente_id, p_nome: v.nome || null }); if (!ok(r, 'Plano duplicado')) return false; ir('/campanhas/planos/' + r.data); };
+  const vis = (l || []).filter(x => !f || x.cliente_id === f);
+  return html`<${Topo} titulo="Campanhas" sub="Planos de anúncios do Google Ads e do Meta Ads que o cliente aprova pelo portal.">
+      <label for="pc" class="sub">Cliente</label><select id="pc" style="width:auto" value=${f} onChange=${e => setF(e.target.value)}><option value="">Todos</option>${clientes.map(c => html`<option value=${c.id}>${c.nome_empresa}</option>`)}</select>
+      <button class="btn pri" onClick=${() => setNovo(true)}>Novo plano</button><//>
+    <${AbasCampanhas} at="/campanhas/planos" />
+    ${!l ? html`<${Carregando} />` : html`<section class="card tabela"><table><thead><tr><th>Cliente</th><th>Plano</th><th>Plataforma</th><th>Versão</th><th>Perguntas</th><th>Ajustes pedidos</th><th>Status</th><th></th></tr></thead><tbody>
+      ${vis.length ? vis.map(x => { const q = x.entregas?.entrega_perguntas || [], m = (x.ads_marcacoes || []).filter(y => !y.resolvido).length; return html`<tr><td><b>${x.clientes?.nome_empresa}</b></td><td>${x.nome}<div class="sub">${dataHora(x.atualizado_em)}</div></td><td>${PLAT_ADS[x.plataforma]}</td><td>v${x.entregas?.versao}</td><td>${q.length ? q.filter(y => y.resposta).length + ' de ' + q.length : '—'}</td><td>${m ? html`<${Pill} k="bad">${m} em aberto<//>` : '—'}</td><td><${PillDe} mapa=${ST_ENT} v=${x.entregas?.status} /></td>
+        <td><div class="acoes"><a class="btn pq pri" href=${'#/campanhas/planos/' + x.id}>Abrir</a><button class="btn pq" onClick=${() => setDup(x)}>Duplicar</button></div></td></tr>`; }) : html`<tr><td colspan="8" class="vazio">Nenhum plano ainda. Crie o primeiro em “Novo plano”.</td></tr>`}
+    </tbody></table></section>`}
+    ${novo && html`<${FormModal} titulo="Novo plano de anúncios" inicial=${{ plataforma: 'google', cliente_id: f }} rotulo="Criar plano" onSalvar=${criar} onFechar=${() => setNovo(false)} campos=${[
+      { n: 'cliente_id', l: 'Cliente', tipo: 'sel', op: opClientes(clientes), obrig: true }, { n: 'plataforma', l: 'Plataforma', tipo: 'sel', vazio: false, op: Object.entries(PLAT_ADS) },
+      { n: 'nome', l: 'Nome da campanha', obrig: true, ph: 'Ex.: dev4lab · Pesquisa · Serviços myLIMS' }]} />`}
+    ${dup && html`<${FormModal} titulo=${'Duplicar “' + dup.nome + '”'} inicial=${{ cliente_id: dup.cliente_id, nome: dup.nome + ' (cópia)' }} rotulo="Duplicar" onSalvar=${duplicar} onFechar=${() => setDup(null)} campos=${[
+      { n: 'cliente_id', l: 'Para o cliente', tipo: 'sel', op: opClientes(clientes), obrig: true }, { n: 'nome', l: 'Nome da campanha', obrig: true, ajuda: 'A cópia é criada como rascunho, com as mesmas palavras, textos, extensões, públicos e perguntas.' }]} />`}`;
+}
+
+// ---------- tela da equipe: editor do plano
+const mover = async (tabela, lista, i, d) => { const a = lista[i], b = lista[i + d]; if (!a || !b) return true; const oa = a.ordem === b.ordem ? i : a.ordem, ob = a.ordem === b.ordem ? i + d : b.ordem;
+  const r1 = await sb.from(tabela).update({ ordem: ob }).eq('id', a.id); const r2 = await sb.from(tabela).update({ ordem: oa }).eq('id', b.id); return ok(r1) && ok(r2); };
+const proxOrdem = l => l.reduce((m, x) => Math.max(m, x.ordem || 0), 0) + 1;
+const BtnsLinha = ({ onCima, onBaixo, onExcluir, ordem = onCima !== undefined || onBaixo !== undefined }) => html`<div class="ads-btns">${ordem && html`<button class="ads-ic" aria-label="Mover para cima" disabled=${!onCima} onClick=${onCima || undefined}>↑</button><button class="ads-ic" aria-label="Mover para baixo" disabled=${!onBaixo} onClick=${onBaixo || undefined}>↓</button>`}${onExcluir && html`<button class="ads-ic x" aria-label="Excluir" onClick=${onExcluir}>×</button>`}</div>`;
+
+function EditorPlanoAds({ id }) {
+  const [P, setP] = useState(undefined); const [sec, setSec] = useState('estrutura'); const [gs, setGs] = useState(null); const [env, setEnv] = useState(false); const [dup, setDup] = useState(false);
+  const clientes = useLista('clientes');
+  const recarregar = async () => { const x = await carregarPlanoAds(id); setP(x); if (x && (!gs || !x.grupos.some(g => g.id === gs))) setGs(x.grupos[0]?.id || null); };
+  useEffect(() => { recarregar(); }, [id]);
+  if (P === undefined) return html`<${Carregando} />`;
+  if (!P) return html`<${Topo} titulo="Plano não encontrado"><a class="btn" href="#/campanhas/planos">Voltar</a><//>`;
+  const { p, e } = P, google = p.plataforma === 'google';
+  const db = async (prom, msg) => { const r = await prom; if (!ok(r, msg)) return false; await recarregar(); return true; };
+  const { r: probs, av } = problemasAds(P);
+  const enviar = async () => {
+    if (probs.length) return toast('Resolva as pendências antes de enviar', 'erro');
+    const nova = e.status !== 'rascunho';
+    if (!confirm(nova ? 'Enviar a versão ' + (e.versao + 1) + ' ao cliente? Ele verá o que mudou desde a versão ' + e.versao + '.' : 'Enviar o plano ao cliente para aprovação?')) return;
+    setEnv(true); const r = await sb.rpc('ads_enviar', { p_plano: p.id }); setEnv(false);
+    if (ok(r, nova ? 'Versão ' + r.data + ' enviada ao cliente' : 'Plano enviado ao cliente')) recarregar();
+  };
+  const exportar = () => { if (e.status !== 'aprovado' && !confirm('Este plano ainda não foi aprovado pelo cliente. Exportar mesmo assim?')) return; google ? exportarGoogle(P) : exportarMeta(P); };
+  const duplicar = async v => { const r = await sb.rpc('ads_duplicar', { p_plano: p.id, p_cliente: v.cliente_id, p_nome: v.nome || null }); if (!ok(r, 'Plano duplicado')) return false; ir('/campanhas/planos/' + r.data); };
+  const marcasAbertas = P.marcas.filter(m => !m.resolvido && !m.autor_agencia).length;
+  const secoes = google ? [['estrutura', 'Estrutura'], ['grupos', 'Grupos'], ['palavras', 'Palavras-chave'], ['negativas', 'Negativas'], ['anuncios', 'Anúncios'], ['extensoes', 'Extensões'], ['perguntas', 'Perguntas'], ['previa', 'Ver como o cliente']]
+    : [['estrutura', 'Estrutura'], ['conjuntos', 'Conjuntos e públicos'], ['anuncios', 'Anúncios'], ['perguntas', 'Perguntas'], ['previa', 'Ver como o cliente']];
+  const ctxEq = { P, db, recarregar, gs, setGs };
+  let corpo;
+  if (sec === 'estrutura') corpo = html`<${EdEstrutura} key=${p.id + p.atualizado_em} ...${ctxEq} />`;
+  else if (sec === 'grupos') corpo = html`<${EdGrupos} ...${ctxEq} />`;
+  else if (sec === 'palavras') corpo = html`<${EdPalavras} ...${ctxEq} />`;
+  else if (sec === 'negativas') corpo = html`<${EdNegativas} ...${ctxEq} />`;
+  else if (sec === 'anuncios') corpo = google ? html`<${EdAnunciosG} ...${ctxEq} />` : html`<${EdAnunciosM} ...${ctxEq} />`;
+  else if (sec === 'extensoes') corpo = html`<${EdExtensoes} ...${ctxEq} />`;
+  else if (sec === 'conjuntos') corpo = html`<${EdConjuntos} ...${ctxEq} />`;
+  else if (sec === 'perguntas') corpo = html`<${EdPerguntas} ...${ctxEq} />`;
+  else corpo = html`<section class="card"><${VisaoPlano} P=${P} ctx=${{ podeMarcar: false, onMudou: recarregar }} /></section>`;
+  return html`<${Topo} titulo=${p.nome} sub=${P.cliente + ' · ' + PLAT_ADS[p.plataforma] + ' · versão ' + e.versao}>
+      <${PillDe} mapa=${ST_ENT} v=${e.status} />
+      <button class="btn pq" onClick=${() => { toast('Rascunho salvo. As alterações dos itens são gravadas na hora.'); recarregar(); }}>Salvar rascunho</button>
+      <button class="btn pq pri" disabled=${env || probs.length > 0} title=${probs.length ? 'Resolva as pendências antes de enviar' : ''} onClick=${enviar}>${e.status === 'rascunho' ? 'Enviar ao cliente' : 'Nova versão'}</button>
+      <button class="btn pq" onClick=${exportar}>${google ? 'Exportar CSV para o Google Ads Editor' : 'Exportar planilha (CSV)'}</button>
+      <button class="btn pq" onClick=${() => setDup(true)}>Duplicar plano</button><//>
+    <div class="acoes"><a class="lnk" href="#/campanhas/planos">← Todos os planos</a>${marcasAbertas > 0 && html`<${Pill} k="bad">${marcasAbertas} pedido${marcasAbertas === 1 ? '' : 's'} de ajuste do cliente em aberto<//>`}</div>
+    ${(probs.length > 0 || av.length > 0) && html`<section class="card ads-pend">${probs.length > 0 && html`<b>Pendências que impedem o envio</b><ul>${probs.map(x => html`<li>${x}</li>`)}</ul>`}${av.length > 0 && html`<b>Avisos</b><ul class="av">${av.slice(0, 12).map(x => html`<li>${x}</li>`)}${av.length > 12 && html`<li>e mais ${av.length - 12}…</li>`}</ul>`}</section>`}
+    <div class="tabs" role="tablist" aria-label="Seções do plano">${secoes.map(([k, t]) => html`<button role="tab" aria-selected=${sec === k} class=${sec === k ? 'on' : ''} onClick=${() => setSec(k)}>${t}</button>`)}</div>
+    ${corpo}
+    ${dup && html`<${FormModal} titulo="Duplicar plano" inicial=${{ cliente_id: p.cliente_id, nome: p.nome + ' (cópia)' }} rotulo="Duplicar" onSalvar=${duplicar} onFechar=${() => setDup(false)} campos=${[{ n: 'cliente_id', l: 'Para o cliente', tipo: 'sel', op: opClientes(clientes), obrig: true }, { n: 'nome', l: 'Nome da campanha', obrig: true }]} />`}`;
+}
+
+function EdEstrutura({ P, db }) {
+  const { p } = P, google = p.plataforma === 'google';
+  const campos = google ? [['nome', 'Nome da campanha'], ['rede', 'Rede'], ['verba_mensal', 'Verba mensal (R$)', 'number'], ['horario', 'Horário', '', 'Ex.: Seg a sex, 7h às 19h'], ['regiao', 'Região', '', 'Ex.: Brasil'], ['idioma', 'Idioma'], ['estrategia_lance', 'Estratégia de lances', '', 'Ex.: Maximizar cliques com CPC máximo de R$ 6']]
+    : [['nome', 'Nome da campanha'], ['objetivo', 'Objetivo', 'objetivo'], ['otimizacao', 'Otimização', '', 'Ex.: Conversões: envio do formulário'], ['verba_mensal', 'Verba mensal (R$)', 'number'], ['regiao', 'Região', '', 'Ex.: Brasil'], ['medicao', 'Medição', '', 'Ex.: Pixel da Meta + API de Conversões']];
+  const [v, setV] = useState({ ...p, observacoes: p.observacoes || '' }); const [s, setS] = useState(false);
+  const salvar = async ev => { ev.preventDefault(); if (!String(v.nome || '').trim()) return toast('Dê um nome à campanha', 'erro'); setS(true);
+    const d = Object.fromEntries([...campos.map(c => c[0]), 'observacoes'].map(k => [k, k === 'verba_mensal' ? num(v[k]) : (String(v[k] ?? '').trim() || null)]));
+    await db(sb.from('ads_planos').update(d).eq('id', p.id), 'Estrutura salva'); setS(false); };
+  return html`<section class="card"><h2>Estrutura da campanha</h2><form class="form" onSubmit=${salvar}><div class="ads-form-grid">
+    ${campos.map(([k, l, t, ph]) => html`<div class="campo"><label for=${'ae' + k}>${l}</label>${t === 'objetivo' ? html`<select id=${'ae' + k} value=${v[k] || ''} onChange=${x => setV({ ...v, [k]: x.target.value })}><option value="">Selecione…</option>${META_OBJ.map(o => html`<option>${o}</option>`)}</select>` : html`<input id=${'ae' + k} type=${t === 'number' ? 'number' : 'text'} step="0.01" value=${v[k] ?? ''} placeholder=${ph || ''} onInput=${x => setV({ ...v, [k]: x.target.value })} />`}</div>`)}</div>
+    <div class="campo"><label for="aeobs">${google ? 'Observações para o cliente' : 'Período e observações'}</label><textarea id="aeobs" value=${v.observacoes} onInput=${x => setV({ ...v, observacoes: x.target.value })} placeholder=${google ? '' : 'Ex.: contínua, com revisão mensal'}></textarea></div>
+    ${google && html`<p class="sub" style="margin:0">O horário no formato “Seg a sex, 7h às 19h” vira a programação de anúncios na exportação para o Google Ads Editor.</p>`}
+    <div><button class="btn pri" type="submit" disabled=${s}>${s ? 'Salvando…' : 'Salvar estrutura'}</button></div></form></section>`;
+}
+
+function SelGrupo({ P, gs, setGs }) {
+  return P.grupos.length > 1 ? html`<div class="tabs" role="group" aria-label="Grupo de anúncios">${P.grupos.map(g => html`<button class=${gs === g.id ? 'on' : ''} onClick=${() => setGs(g.id)}>${g.nome}</button>`)}</div>` : null;
+}
+
+function EdGrupos({ P, db }) {
+  const [m, setM] = useState(null);
+  const salvar = async v => { const d = { nome: v.nome, descricao: v.descricao || null, url_final: v.url_final || null }; return db(m.id ? sb.from('ads_grupos').update(d).eq('id', m.id) : sb.from('ads_grupos').insert({ ...d, plano_id: P.p.id, ordem: proxOrdem(P.grupos) }), 'Grupo salvo'); };
+  const excluir = g => confirm('Excluir o grupo “' + g.nome + '” com todas as palavras-chave e anúncios dele?') && db(sb.from('ads_grupos').delete().eq('id', g.id), 'Grupo excluído');
+  return html`<section class="card"><div class="topo" style="margin-bottom:12px"><h2>Grupos de anúncios</h2><button class="btn pq pri" onClick=${() => setM({})}>Novo grupo</button></div>
+    ${P.grupos.length ? html`<div class="lista">${P.grupos.map((g, i) => html`<div><div style="min-width:0"><b>Grupo ${i + 1} · ${g.nome}</b><div class="sub">${g.descricao || 'Sem descrição'}</div><div class="sub" style="word-break:break-all">${g.url_final || 'Sem URL final'}</div></div>
+      <div class="acoes"><button class="btn pq" onClick=${() => setM(g)}>Editar</button><${BtnsLinha} onCima=${i > 0 && (() => mover('ads_grupos', P.grupos, i, -1).then(() => db(Promise.resolve({}))))} onBaixo=${i < P.grupos.length - 1 && (() => mover('ads_grupos', P.grupos, i, 1).then(() => db(Promise.resolve({}))))} onExcluir=${() => excluir(g)} /></div></div>`)}</div>` : html`<p class="vazio">Nenhum grupo ainda.</p>`}
+    ${m && html`<${FormModal} titulo=${m.id ? 'Editar grupo' : 'Novo grupo'} inicial=${m} onSalvar=${salvar} onFechar=${() => setM(null)} campos=${[{ n: 'nome', l: 'Nome do grupo', obrig: true, ph: 'Ex.: Serviços myLIMS' }, { n: 'descricao', l: 'Para quem é este grupo', tipo: 'area' }, { n: 'url_final', l: 'URL final', tipo: 'url', ph: 'https://…' }]} />`}</section>`;
+}
+
+function EdPalavras({ P, db, gs, setGs }) {
+  const [txt, setTxt] = useState(''); const [sub, setSub] = useState(''); const [cp, setCp] = useState('ampla'); const [s, setS] = useState(false);
+  const g = P.grupos.find(x => x.id === gs);
+  if (!g) return html`<section class="card"><p class="vazio">Crie um grupo de anúncios primeiro.</p></section>`;
+  const ks = P.palavras.filter(k => k.grupo_id === g.id);
+  const add = async () => { const ls = linhasDe(txt).map(l => lerKw(l, cp)).filter(x => x.termo); if (!ls.length) return; const longas = ls.filter(x => tam(x.termo) > 80); if (longas.length) return toast('Palavra-chave com mais de 80 caracteres: ' + longas[0].termo, 'erro');
+    setS(true); let o = proxOrdem(ks); const r = await db(sb.from('ads_palavras').insert(ls.map(x => ({ ...x, grupo_id: g.id, subgrupo: sub.trim() || null, ordem: o++ }))), ls.length + ' palavra(s)-chave adicionada(s)'); setS(false); if (r) setTxt(''); };
+  const dups = new Map(); P.palavras.forEach(k => { const c = normKw(k.termo) + '|' + k.correspondencia; dups.set(c, (dups.get(c) || 0) + 1); });
+  const subs = []; ks.forEach(k => { const t = k.subgrupo || ''; let b = subs.find(x => x[0] === t); if (!b) subs.push(b = [t, []]); b[1].push(k); });
+  return html`<${SelGrupo} P=${P} gs=${gs} setGs=${setGs} />
+    <section class="card"><h2>Adicionar palavras-chave · ${g.nome}</h2><div class="form">
+      <div class="campo"><label for="kwt">Uma por linha</label><textarea id="kwt" value=${txt} onInput=${e => setTxt(e.target.value)} placeholder=${'suporte mylims\n"relatório mylims"\n[dev4lab]'}></textarea><span class="sub">Use "termo" para frase e [termo] para exata. Sem marcação, vale a correspondência escolhida abaixo.</span></div>
+      <div class="ads-form-grid"><div class="campo"><label for="kws">Subgrupo</label><input id="kws" value=${sub} onInput=${e => setSub(e.target.value)} placeholder="Ex.: Suporte e ajuda" list="kwsubs" /><datalist id="kwsubs">${[...new Set(ks.map(k => k.subgrupo).filter(Boolean))].map(x => html`<option value=${x} />`)}</datalist></div>
+        <div class="campo"><label for="kwc">Correspondência sem marcação</label><select id="kwc" value=${cp} onChange=${e => setCp(e.target.value)}>${CORRESP.map(([k, l]) => html`<option value=${k}>${l}</option>`)}</select></div></div>
+      <div><button class="btn pri" disabled=${s || !txt.trim()} onClick=${add}>Adicionar</button></div></div></section>
+    <section class="card"><h2>${ks.length} palavra${ks.length === 1 ? '' : 's'}-chave</h2>
+      ${ks.length ? html`<div class="ads-rolagem"><table class="ads-tab"><thead><tr><th>Palavra-chave</th><th>Correspondência</th><th>Subgrupo</th><th class="a"><span class="sr">Ações</span></th></tr></thead><tbody>
+      ${subs.map(([t, l]) => html`${t && html`<tr class="sub"><td colspan="4">${t}</td></tr>`}${l.map(k => { const i = ks.indexOf(k), conf = P.negativas.filter(n => (!n.grupo_id || n.grupo_id === g.id) && conflitaNeg(k.termo, n));
+        return html`<tr><td><code class="ads-kw">${fmtKw(k.termo, k.correspondencia)}</code>${dups.get(normKw(k.termo) + '|' + k.correspondencia) > 1 && html` <${Pill} k="warn">repetida<//>`}${conf.length > 0 && html` <${Pill} k="bad">bloqueada por ${fmtKw(conf[0].termo, conf[0].correspondencia)}<//>`}<${MarcasItem} P=${P} alvo=${k.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} /></td>
+          <td><select aria-label="Correspondência" value=${k.correspondencia} onChange=${e => db(sb.from('ads_palavras').update({ correspondencia: e.target.value }).eq('id', k.id))}>${CORRESP.map(([c, n]) => html`<option value=${c}>${n}</option>`)}</select></td>
+          <td><${TextoLim} valor=${k.subgrupo || ''} rotulo="Subgrupo" onSalvar=${x => db(sb.from('ads_palavras').update({ subgrupo: x }).eq('id', k.id))} /></td>
+          <td class="a"><${BtnsLinha} onCima=${i > 0 && (() => mover('ads_palavras', ks, i, -1).then(() => db(Promise.resolve({}))))} onBaixo=${i < ks.length - 1 && (() => mover('ads_palavras', ks, i, 1).then(() => db(Promise.resolve({}))))} onExcluir=${() => db(sb.from('ads_palavras').delete().eq('id', k.id))} /></td></tr>`; })}`)}
+      </tbody></table></div>` : html`<p class="vazio">Nenhuma palavra-chave neste grupo.</p>`}</section>`;
+}
+
+function EdNegativas({ P, db }) {
+  const [txt, setTxt] = useState(''); const [esc, setEsc] = useState(''); const [cp, setCp] = useState('ampla'); const [s, setS] = useState(false);
+  const add = async () => { const ls = linhasDe(txt).map(l => lerKw(l, cp)).filter(x => x.termo); if (!ls.length) return; setS(true); let o = proxOrdem(P.negativas);
+    const r = await db(sb.from('ads_negativas').insert(ls.map(x => ({ ...x, plano_id: P.p.id, grupo_id: esc || null, ordem: o++ }))), ls.length + ' negativa(s) adicionada(s)'); setS(false); if (r) setTxt(''); };
+  return html`<section class="card"><h2>Adicionar palavras negativas</h2><div class="form">
+      <div class="campo"><label for="ngt">Uma por linha</label><textarea id="ngt" value=${txt} onInput=${e => setTxt(e.target.value)} placeholder=${'grátis\nvagas\n"o que significa"'}></textarea></div>
+      <div class="ads-form-grid"><div class="campo"><label for="nge">Vale para</label><select id="nge" value=${esc} onChange=${e => setEsc(e.target.value)}><option value="">A campanha toda</option>${P.grupos.map(g => html`<option value=${g.id}>Só o grupo ${g.nome}</option>`)}</select></div>
+        <div class="campo"><label for="ngc">Correspondência sem marcação</label><select id="ngc" value=${cp} onChange=${e => setCp(e.target.value)}>${CORRESP.map(([k, l]) => html`<option value=${k}>${l}</option>`)}</select></div></div>
+      <div><button class="btn pri" disabled=${s || !txt.trim()} onClick=${add}>Adicionar</button></div></div></section>
+    <section class="card"><h2>${P.negativas.length} negativa${P.negativas.length === 1 ? '' : 's'}</h2>${P.negativas.length ? html`<div>${P.negativas.map(n => html`<div class="ads-neg-linha"><span class="ads-tag neg">${fmtKw(n.termo, n.correspondencia)}<button class="ads-tag-x" aria-label=${'Excluir ' + n.termo} onClick=${() => db(sb.from('ads_negativas').delete().eq('id', n.id))}>×</button></span><span class="sub">${n.grupo_id ? 'grupo ' + (P.grupos.find(g => g.id === n.grupo_id) || {}).nome : 'campanha'}</span><${MarcasItem} P=${P} alvo=${n.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} /></div>`)}</div>` : html`<p class="vazio">Nenhuma negativa.</p>`}</section>`;
+}
+
+function ListaTextosG({ P, db, g, tipo }) {
+  const l = P.textos.filter(x => x.grupo_id === g.id && x.tipo === tipo), max = LIM_G[tipo], lim = tipo === 'titulo' ? 15 : 4;
+  return html`<div class="ads-lista-txt">${l.map((t, i) => html`<div class="ads-txt-linha"><span class="n">${i + 1}</span><${TextoLim} valor=${t.texto} max=${max} area=${tipo === 'descricao'} rotulo=${(tipo === 'titulo' ? 'Título ' : 'Descrição ') + (i + 1)} onSalvar=${x => db(sb.from('ads_textos').update({ texto: x }).eq('id', t.id))} />
+      ${tipo === 'titulo' && html`<select class="ads-fix" aria-label="Fixar posição" value=${t.fixado_posicao || ''} onChange=${e => db(sb.from('ads_textos').update({ fixado_posicao: e.target.value ? Number(e.target.value) : null }).eq('id', t.id))}><option value="">Não fixado</option><option value="1">Fixar na 1ª</option><option value="2">Fixar na 2ª</option><option value="3">Fixar na 3ª</option></select>`}
+      <${BtnsLinha} onCima=${i > 0 && (() => mover('ads_textos', l, i, -1).then(() => db(Promise.resolve({}))))} onBaixo=${i < l.length - 1 && (() => mover('ads_textos', l, i, 1).then(() => db(Promise.resolve({}))))} onExcluir=${() => db(sb.from('ads_textos').delete().eq('id', t.id))} />
+      <${MarcasItem} P=${P} alvo=${t.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} /></div>`)}
+    <${NovoTexto} max=${max} area=${tipo === 'descricao'} ph=${tipo === 'titulo' ? 'Novo título' : 'Nova descrição'} desab=${l.length >= lim} onAdd=${x => db(sb.from('ads_textos').insert({ grupo_id: g.id, tipo, texto: x, ordem: proxOrdem(l) }))} />
+    ${l.length >= lim && html`<span class="sub">Limite de ${lim} atingido.</span>`}</div>`;
+}
+function EdAnunciosG({ P, db, gs, setGs }) {
+  const g = P.grupos.find(x => x.id === gs);
+  if (!g) return html`<section class="card"><p class="vazio">Crie um grupo de anúncios primeiro.</p></section>`;
+  const tx = P.textos.filter(x => x.grupo_id === g.id), nt = tx.filter(x => x.tipo === 'titulo').length, nd = tx.filter(x => x.tipo === 'descricao').length;
+  return html`<${SelGrupo} P=${P} gs=${gs} setGs=${setGs} />
+    <div class="cols"><div class="c2">
+      <section class="card"><h2>Títulos (${nt}/15) <span class="sub">de 3 a 15, até 30 caracteres; o Google recomenda 8 ou mais</span></h2><${ListaTextosG} P=${P} db=${db} g=${g} tipo="titulo" /></section>
+      <section class="card"><h2>Descrições (${nd}/4) <span class="sub">de 2 a 4, até 90 caracteres</span></h2><${ListaTextosG} P=${P} db=${db} g=${g} tipo="descricao" /></section></div>
+      <div class="c1"><section class="card"><h2>Prévia no Google</h2><div class="ads"><${SerpPrevia} P=${P} g=${g} /></div><p class="sub" style="margin:10px 0 0">URL final: ${g.url_final || '—'} (edite em Grupos)</p></section></div></div>`;
+}
+
+function EdExtensoes({ P, db }) {
+  const ex = t => P.extensoes.filter(x => x.tipo === t);
+  const [sn, setSn] = useState(null); const [sl, setSl] = useState(null);
+  const salvarSn = async v => { const vals = linhasDe(v.valores); if (vals.length < 3 || vals.length > 10) return toast('Use de 3 a 10 valores', 'erro'), false; const longo = vals.find(x => tam(x) > 25); if (longo) return toast('Valor com mais de 25 caracteres: ' + longo, 'erro'), false;
+    const d = { cabecalho: v.cabecalho, valores: vals }; return db(sn.id ? sb.from('ads_extensoes').update(d).eq('id', sn.id) : sb.from('ads_extensoes').insert({ ...d, tipo: 'snippet', plano_id: P.p.id, ordem: proxOrdem(ex('snippet')) }), 'Snippet salvo'); };
+  const salvarSl = async v => { if (tam(v.texto) > 25 || tam(v.descricao1) > 35 || tam(v.descricao2) > 35) return toast('Texto até 25 e descrições até 35 caracteres', 'erro'), false;
+    const d = { texto: v.texto, url: v.url, descricao1: v.descricao1 || null, descricao2: v.descricao2 || null }; return db(sl.id ? sb.from('ads_extensoes').update(d).eq('id', sl.id) : sb.from('ads_extensoes').insert({ ...d, tipo: 'sitelink', plano_id: P.p.id, ordem: proxOrdem(ex('sitelink')) }), 'Sitelink salvo'); };
+  const dest = ex('destaque');
+  return html`<section class="card"><div class="topo" style="margin-bottom:12px"><h2>Snippets estruturados</h2><button class="btn pq pri" onClick=${() => setSn({ cabecalho: 'Serviços', valores: '' })}>Novo snippet</button></div>
+      ${ex('snippet').length ? html`<div class="lista">${ex('snippet').map(x => html`<div><div style="min-width:0"><b>${x.cabecalho}:</b> ${(x.valores || []).join(', ')}<${MarcasItem} P=${P} alvo=${x.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} /></div><div class="acoes"><button class="btn pq" onClick=${() => setSn({ ...x, valores: (x.valores || []).join('\n') })}>Editar</button><${BtnsLinha} onExcluir=${() => db(sb.from('ads_extensoes').delete().eq('id', x.id))} /></div></div>`)}</div>` : html`<p class="vazio">Nenhum snippet.</p>`}</section>
+    <section class="card"><h2>Frases de destaque <span class="sub">até 25 caracteres</span></h2><div class="ads-lista-txt">${dest.map((x, i) => html`<div class="ads-txt-linha"><span class="n">${i + 1}</span><${TextoLim} valor=${x.texto} max=${25} rotulo=${'Frase de destaque ' + (i + 1)} onSalvar=${t => db(sb.from('ads_extensoes').update({ texto: t }).eq('id', x.id))} /><${BtnsLinha} onCima=${i > 0 && (() => mover('ads_extensoes', dest, i, -1).then(() => db(Promise.resolve({}))))} onBaixo=${i < dest.length - 1 && (() => mover('ads_extensoes', dest, i, 1).then(() => db(Promise.resolve({}))))} onExcluir=${() => db(sb.from('ads_extensoes').delete().eq('id', x.id))} /><${MarcasItem} P=${P} alvo=${x.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} /></div>`)}
+      <${NovoTexto} max=${25} ph="Nova frase de destaque" onAdd=${t => db(sb.from('ads_extensoes').insert({ tipo: 'destaque', texto: t, plano_id: P.p.id, ordem: proxOrdem(dest) }))} /></div></section>
+    <section class="card"><div class="topo" style="margin-bottom:12px"><h2>Sitelinks</h2><button class="btn pq pri" onClick=${() => setSl({})}>Novo sitelink</button></div>
+      ${ex('sitelink').length ? html`<div class="lista">${ex('sitelink').map(x => html`<div><div style="min-width:0"><b>${x.texto}</b><div class="sub">${[x.descricao1, x.descricao2].filter(Boolean).join(' · ')}</div><div class="sub" style="word-break:break-all">${x.url}</div><${MarcasItem} P=${P} alvo=${x.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} /></div><div class="acoes"><button class="btn pq" onClick=${() => setSl(x)}>Editar</button><${BtnsLinha} onExcluir=${() => db(sb.from('ads_extensoes').delete().eq('id', x.id))} /></div></div>`)}</div>` : html`<p class="vazio">Nenhum sitelink.</p>`}</section>
+    ${sn && html`<${FormModal} titulo=${sn.id ? 'Editar snippet' : 'Novo snippet'} inicial=${sn} onSalvar=${salvarSn} onFechar=${() => setSn(null)} campos=${[{ n: 'cabecalho', l: 'Cabeçalho', tipo: 'sel', vazio: false, op: SNIP_CAB.map(c => [c[0], c[0]]) }, { n: 'valores', l: 'Valores (um por linha)', tipo: 'area', obrig: true, ajuda: 'De 3 a 10 valores, até 25 caracteres cada.' }]} />`}
+    ${sl && html`<${FormModal} titulo=${sl.id ? 'Editar sitelink' : 'Novo sitelink'} inicial=${sl} onSalvar=${salvarSl} onFechar=${() => setSl(null)} campos=${[{ n: 'texto', l: 'Texto do link (até 25)', obrig: true }, { n: 'url', l: 'URL final', tipo: 'url', obrig: true, ph: 'https://…' }, { n: 'descricao1', l: 'Descrição 1 (até 35)' }, { n: 'descricao2', l: 'Descrição 2 (até 35)' }]} />`}`;
+}
+
+function EdPerguntas({ P, db }) {
+  const [t, setT] = useState(''); const [k, setK] = useState(0);
+  const add = async () => { const qs = linhasDe(t); if (!qs.length) return; const { data: ex } = await sb.from('entrega_perguntas').select('ordem').eq('entrega_id', P.e.id); let o = (ex || []).reduce((m, x) => Math.max(m, x.ordem || 0), 0) + 1;
+    if (await db(sb.from('entrega_perguntas').insert(qs.map(q => { const [p, a] = q.split('|'); return { entrega_id: P.e.id, pergunta: p.trim(), ajuda: a ? a.trim() : null, ordem: o++ }; })), 'Pergunta(s) adicionada(s)')) { setT(''); setK(k + 1); } };
+  return html`<div class="cols"><div class="c2"><section class="card"><h2>Perguntas para o cliente</h2><${PerguntasEntrega} key=${k} e=${P.e} editavel=${false} />
+      <div class="form" style="margin-top:16px"><div class="campo"><label for="pqn">Adicionar perguntas (uma por linha)</label><textarea id="pqn" value=${t} onInput=${e => setT(e.target.value)} placeholder="Atendem todo o Brasil? | Para a frase “Atendemos todo o Brasil”"></textarea><span class="sub">Use “|” para colocar uma dica embaixo da pergunta.</span></div><div><button class="btn pq pri" disabled=${!t.trim()} onClick=${add}>Adicionar</button></div></div></section></div>
+    <div class="c1"><section class="card"><h2>Comentários gerais</h2><${ComentariosEntrega} e=${P.e} agencia=${true} /></section></div></div>`;
+}
+
+// ---------- editor Meta: conjuntos e anúncios
+function EdConjuntos({ P, db }) {
+  const [m, setM] = useState(null);
+  const arr = t => linhasDe(t);
+  const salvar = async v => { const d = { nome: v.nome, verba_percentual: num(v.verba_percentual), verba_valor: num(v.verba_valor), localizacao: v.localizacao || null, idade_min: num(v.idade_min), idade_max: num(v.idade_max), genero: v.genero || 'todos',
+      interesses: arr(v.interesses), publicos_personalizados: arr(v.publicos_personalizados), exclusoes: arr(v.exclusoes), posicionamentos: v.posicionamentos || [], expansao_publico: !!v.expansao_publico, observacoes: v.observacoes || null };
+    return db(m.id ? sb.from('meta_conjuntos').update(d).eq('id', m.id) : sb.from('meta_conjuntos').insert({ ...d, plano_id: P.p.id, ordem: proxOrdem(P.conjuntos) }), 'Conjunto salvo'); };
+  const abrir = c => setM(c.id ? { ...c, interesses: c.interesses.join('\n'), publicos_personalizados: c.publicos_personalizados.join('\n'), exclusoes: c.exclusoes.join('\n') } : { genero: 'todos', localizacao: 'Brasil', idade_min: 25, idade_max: 60, posicionamentos: ['Feed do Facebook', 'Feed do Instagram'] });
+  const soma = P.conjuntos.reduce((s, c) => s + Number(c.verba_percentual || 0), 0);
+  return html`<section class="card"><div class="topo" style="margin-bottom:12px"><div><h2>Conjuntos de anúncios e públicos</h2>${P.conjuntos.length > 0 && html`<span class="sub">Divisão da verba: ${soma}%</span>`}</div><button class="btn pq pri" onClick=${() => abrir({})}>Novo conjunto</button></div>
+    ${P.conjuntos.length ? html`<div class="lista">${P.conjuntos.map((c, i) => html`<div><div style="min-width:0"><b>Conjunto ${i + 1} · ${c.nome}</b>${c.verba_percentual != null && html` <span class="ads-badge">${Number(c.verba_percentual)}% da verba</span>`}
+        <div class="sub">${[c.localizacao, (c.idade_min || c.idade_max) && (c.idade_min || 18) + ' a ' + (c.idade_max || '65+') + ' anos', c.interesses.length && c.interesses.length + ' interesse(s)', c.publicos_personalizados.length && c.publicos_personalizados.length + ' público(s) personalizado(s)', c.posicionamentos.join(', ')].filter(Boolean).join(' · ')}</div>
+        <${MarcasItem} P=${P} alvo=${c.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} /></div>
+      <div class="acoes"><button class="btn pq" onClick=${() => abrir(c)}>Editar</button><${BtnsLinha} onCima=${i > 0 && (() => mover('meta_conjuntos', P.conjuntos, i, -1).then(() => db(Promise.resolve({}))))} onBaixo=${i < P.conjuntos.length - 1 && (() => mover('meta_conjuntos', P.conjuntos, i, 1).then(() => db(Promise.resolve({}))))} onExcluir=${() => confirm('Excluir o conjunto “' + c.nome + '”?') && db(sb.from('meta_conjuntos').delete().eq('id', c.id), 'Conjunto excluído')} /></div></div>`)}</div>` : html`<p class="vazio">Nenhum conjunto ainda.</p>`}
+    ${m && html`<${FormModal} titulo=${m.id ? 'Editar conjunto' : 'Novo conjunto'} inicial=${m} onSalvar=${salvar} onFechar=${() => setM(null)} campos=${[
+      { n: 'nome', l: 'Nome do conjunto', obrig: true, ph: 'Ex.: Visitantes do site (remarketing)' }, { n: 'verba_percentual', l: 'Parte da verba (%)', tipo: 'number' }, { n: 'verba_valor', l: 'Ou valor fixo (R$/mês)', tipo: 'number' },
+      { n: 'localizacao', l: 'Localização', ph: 'Ex.: Brasil' }, { n: 'idade_min', l: 'Idade mínima', tipo: 'number' }, { n: 'idade_max', l: 'Idade máxima (65 = 65+)', tipo: 'number' }, { n: 'genero', l: 'Gênero', tipo: 'sel', vazio: false, op: GENEROS },
+      { n: 'publicos_personalizados', l: 'Públicos personalizados (um por linha)', tipo: 'area', ph: 'Visitaram o site nos últimos 30 dias' }, { n: 'exclusoes', l: 'Exclusões (uma por linha)', tipo: 'area' }, { n: 'interesses', l: 'Interesses e comportamentos (um por linha)', tipo: 'area' },
+      { n: 'posicionamentos', l: 'Posicionamentos', tipo: 'checks', op: META_POS.map(x => [x, x]) }, { n: 'expansao_publico', l: 'Expansão de público (Advantage+) ativada', tipo: 'bool' }, { n: 'observacoes', l: 'Observações', tipo: 'area' }]} />`}</section>`;
+}
+
+function EdAnuncioMeta({ P, db, a, i, n }) {
+  const [m, setM] = useState(null); const [up, setUp] = useState(false);
+  const md = P.midias.filter(x => x.anuncio_id === a.id), vinc = P.vinculos.filter(v => v.anuncio_id === a.id).map(v => v.conjunto_id);
+  const salvar = async v => { const d = { nome: v.nome, formato: v.formato, cta: v.cta || null, url_destino: v.url_destino || null, utm: v.utm || null, descricao_criativo: v.descricao_criativo || null }; return db(sb.from('meta_anuncios').update(d).eq('id', a.id), 'Anúncio salvo'); };
+  const togConj = (c, on) => db(on ? sb.from('meta_anuncio_conjuntos').insert({ anuncio_id: a.id, conjunto_id: c }) : sb.from('meta_anuncio_conjuntos').delete().eq('anuncio_id', a.id).eq('conjunto_id', c));
+  const subir = async ev => {
+    const fs = [...ev.target.files]; ev.target.value = ''; if (!fs.length) return;
+    setUp(true); let o = proxOrdem(md);
+    for (const f of fs) {
+      if (!/^(image|video)\//.test(f.type)) { toast('Envie imagem ou vídeo: ' + f.name, 'erro'); continue; }
+      if (f.size > 50 * 1024 * 1024) { toast('Arquivo acima de 50 MB: ' + f.name, 'erro'); continue; }
+      const nome = f.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-'), path = aleatorio() + '/' + nome;
+      const r = await sb.storage.from('previas').upload(path, f, { contentType: f.type, cacheControl: '3600' });
+      if (r.error) { toast(r.error.message, 'erro'); continue; }
+      const prop = await new Promise(res => { const ok2 = (w, h) => res(!w || !h ? '1:1' : h / w > 1.5 ? '9:16' : h / w > 1.1 ? '4:5' : '1:1'); if (f.type.startsWith('image/')) { const im = new Image(); im.onload = () => ok2(im.naturalWidth, im.naturalHeight); im.onerror = () => res('1:1'); im.src = URL.createObjectURL(f); } else { const vd = document.createElement('video'); vd.preload = 'metadata'; vd.onloadedmetadata = () => ok2(vd.videoWidth, vd.videoHeight); vd.onerror = () => res('1:1'); vd.src = URL.createObjectURL(f); } });
+      await sb.from('meta_midias').insert({ anuncio_id: a.id, arquivo_path: path, mime: f.type, proporcao: prop, ordem: o++ });
+    }
+    setUp(false); db(Promise.resolve({}), 'Arquivos enviados');
+  };
+  const card = a.formato === 'carrossel';
+  return html`<section class="card ads-ed-anuncio"><div class="topo" style="margin-bottom:10px"><div style="min-width:0"><h2>Anúncio ${i + 1} · ${a.nome}</h2><span class="sub">${(FORMATOS_M.find(f => f[0] === a.formato) || [])[1]} · botão: ${a.cta || '—'} · ${a.url_destino || 'sem URL de destino'}${a.utm ? ' · UTM: ' + a.utm : ''}</span></div>
+      <div class="acoes"><button class="btn pq" onClick=${() => setM({ ...a })}>Editar dados</button><${BtnsLinha} onCima=${i > 0 && (() => mover('meta_anuncios', P.anuncios, i, -1).then(() => db(Promise.resolve({}))))} onBaixo=${i < n - 1 && (() => mover('meta_anuncios', P.anuncios, i, 1).then(() => db(Promise.resolve({}))))} onExcluir=${() => confirm('Excluir o anúncio “' + a.nome + '”?') && db(sb.from('meta_anuncios').delete().eq('id', a.id), 'Anúncio excluído')} /></div></div>
+    <${MarcasItem} P=${P} alvo=${a.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} />
+    ${a.descricao_criativo && html`<p class="sub" style="margin:0 0 10px"><b>Criativo:</b> ${a.descricao_criativo}</p>`}
+    <div class="campo" style="margin-bottom:14px"><span style="font-size:13px;font-weight:600">Exibido nos conjuntos</span><div class="acoes">${P.conjuntos.length ? P.conjuntos.map((c, k) => html`<label class="chk"><input type="checkbox" checked=${vinc.includes(c.id)} onChange=${e => togConj(c.id, e.target.checked)} />Conjunto ${k + 1} · ${c.nome}</label>`) : html`<span class="sub">Crie os conjuntos primeiro.</span>`}</div></div>
+    <div class="cols"><div class="c2">
+      ${TIPOS_MT.map(([t, rot, um]) => { const l = P.mtextos.filter(x => x.anuncio_id === a.id && x.tipo === t); return html`<div style="margin-bottom:14px"><h3 style="margin-bottom:8px">${rot} (${l.length}/5) <span class="sub">recomendado até ${LIM_M[t]} caracteres</span></h3><div class="ads-lista-txt">
+        ${l.map((x, k) => html`<div class="ads-txt-linha"><span class="n">${k + 1}</span><${TextoLim} valor=${x.texto} max=${LIM_M[t]} aviso=${true} area=${t === 'texto_principal'} rotulo=${um + ' ' + (k + 1)} onSalvar=${v => db(sb.from('meta_textos').update({ texto: v }).eq('id', x.id))} /><${BtnsLinha} onCima=${k > 0 && (() => mover('meta_textos', l, k, -1).then(() => db(Promise.resolve({}))))} onBaixo=${k < l.length - 1 && (() => mover('meta_textos', l, k, 1).then(() => db(Promise.resolve({}))))} onExcluir=${() => db(sb.from('meta_textos').delete().eq('id', x.id))} /><${MarcasItem} P=${P} alvo=${x.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} />${tam(x.texto) > LIM_M[t] && html`<span class="ads-aviso-txt">Acima do recomendado: pode ser cortado.</span>`}</div>`)}
+        <${NovoTexto} max=${LIM_M[t]} aviso=${true} area=${t === 'texto_principal'} ph=${'Novo ' + um.toLowerCase()} desab=${l.length >= 5} onAdd=${v => db(sb.from('meta_textos').insert({ anuncio_id: a.id, tipo: t, texto: v, ordem: proxOrdem(l) }))} /></div></div>`; })}
+      <h3 style="margin-bottom:8px">Artes e vídeos (${md.length}) ${card && html`<span class="sub">carrossel: de 2 a 10 cartões</span>`}</h3>
+      <div class="ads-midias ed">${md.map((x, k) => html`<div class="ads-midia-item"><${MidiaMock} m=${x} cls="ads-thumb" />
+        <select aria-label="Proporção" value=${x.proporcao} onChange=${e => db(sb.from('meta_midias').update({ proporcao: e.target.value }).eq('id', x.id))}>${PROPORCOES.map(([v, l]) => html`<option value=${v}>${l}</option>`)}</select>
+        ${card && x.proporcao !== '9:16' && html`<${TextoLim} valor=${x.titulo_cartao || ''} rotulo="Título do cartão" ph="Título do cartão" max=${40} aviso=${true} onSalvar=${v => db(sb.from('meta_midias').update({ titulo_cartao: v }).eq('id', x.id))} /><${TextoLim} valor=${x.descricao_cartao || ''} rotulo="Descrição do cartão" ph="Descrição do cartão" max=${20} aviso=${true} onSalvar=${v => db(sb.from('meta_midias').update({ descricao_cartao: v }).eq('id', x.id))} /><${TextoLim} valor=${x.url_cartao || ''} rotulo="URL do cartão" ph="URL do cartão (opcional)" onSalvar=${v => db(sb.from('meta_midias').update({ url_cartao: v }).eq('id', x.id))} />`}
+        <${BtnsLinha} onCima=${k > 0 && (() => mover('meta_midias', md, k, -1).then(() => db(Promise.resolve({}))))} onBaixo=${k < md.length - 1 && (() => mover('meta_midias', md, k, 1).then(() => db(Promise.resolve({}))))} onExcluir=${() => confirm('Remover esta arte?') && db(sb.from('meta_midias').delete().eq('id', x.id))} />
+        <${MarcasItem} P=${P} alvo=${x.id} agencia=${true} onMudou=${() => db(Promise.resolve({}))} /></div>`)}
+        <label class="ads-up"><input type="file" accept="image/*,video/mp4,video/quicktime,video/webm" multiple onChange=${subir} disabled=${up} /><span>${up ? 'Enviando…' : '+ Enviar artes ou vídeos'}</span><small>JPG, PNG, WebP, GIF, MP4, MOV ou WebM, até 50 MB. A proporção é detectada pelo tamanho.</small></label></div>
+      ${a.formato === 'video' && md.length > 0 && !md.some(x => x.proporcao === '9:16') && html`<p class="ads-aviso-txt">Falta a versão 9:16 do vídeo para Stories e Reels.</p>`}
+    </div><div class="c1"><div class="ads"><${MockMeta} P=${P} a=${a} /></div></div></div>
+    ${m && html`<${FormModal} titulo="Dados do anúncio" inicial=${m} onSalvar=${salvar} onFechar=${() => setM(null)} campos=${[{ n: 'nome', l: 'Nome do anúncio', obrig: true }, { n: 'formato', l: 'Formato', tipo: 'sel', vazio: false, op: FORMATOS_M }, { n: 'cta', l: 'Botão (CTA)', tipo: 'sel', op: META_CTA.map(c => [c[0], c[0]]) },
+      { n: 'url_destino', l: 'URL de destino', tipo: 'url', ph: 'https://…' }, { n: 'utm', l: 'Parâmetros UTM', ph: 'utm_source=meta&utm_medium=cpc&utm_campaign=…' }, { n: 'descricao_criativo', l: 'Descrição do criativo (o que a arte mostra)', tipo: 'area' }]} />`}</section>`;
+}
+function EdAnunciosM({ P, db }) {
+  const novo = () => db(sb.from('meta_anuncios').insert({ plano_id: P.p.id, nome: 'Novo anúncio', formato: 'imagem', cta: 'Saiba mais', ordem: proxOrdem(P.anuncios) }), 'Anúncio criado');
+  return html`${P.anuncios.map((a, i) => html`<${EdAnuncioMeta} key=${a.id} P=${P} db=${db} a=${a} i=${i} n=${P.anuncios.length} />`)}${!P.anuncios.length && html`<section class="card"><p class="vazio">Nenhum anúncio ainda.</p></section>`}<div><button class="btn pri" onClick=${novo}>Novo anúncio</button></div>`;
+}
+
 function App() {
   const rota = useRota();
   const [sessao, setSessao] = useState(undefined); const [perfil, setPerfil] = useState(undefined);
