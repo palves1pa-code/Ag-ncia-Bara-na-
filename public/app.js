@@ -316,6 +316,7 @@ function Dashboard({ perfil }) {
   return html`
     <${Topo} titulo=${'Olá' + (primeiro ? ', ' + primeiro : '')} sub=${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}>
       <a class="btn pri" href="#/propostas/nova">Nova proposta</a><//>
+    <${LembreteCalendarios} />
     <div class="grid">
       <${Kpi} label="Receita mensal fechada" valor=${brl(soma(fech, o => o.valor_mensal))} nota=${brl(soma(fech, o => o.valor_unico)) + ' em implantações'} k="ok" />
       <${Kpi} label="Em negociação" valor=${brl(soma(aberto, o => o.valor_mensal)) + '/mês'} nota=${aberto.length + ' proposta(s) em aberto'} k="info" />
@@ -1178,29 +1179,19 @@ function Redes() {
   const navegar = n => { const d = new Date(ano, mm - 1 + n, 1); setMes(iso(d).slice(0, 7)); };
   const semanas = diasCal[35].getMonth() === mm - 1 ? 6 : 5;
   const aguard = posts ? posts.filter(p => p.status === 'aguardando_aprovacao').length : 0;
-  return html`<${Topo} titulo="Redes sociais" sub="Planeje os posts, envie para aprovação do cliente no portal e acompanhe o status.">
+  const nomeCli = (clientes.find(c => c.id === cid) || {}).nome_empresa || '';
+  return html`<${Topo} titulo="Redes sociais" sub="Monte o calendário do mês, envie para aprovação do cliente no portal e acompanhe as respostas.">
       <label for="rc" class="sub">Cliente</label><select id="rc" style="width:auto" value=${cid} onChange=${e => setCid(e.target.value)}>${clientes.map(c => html`<option value=${c.id}>${c.nome_empresa}</option>`)}</select>
-      <button class="btn" onClick=${() => setMr({ rede: 'instagram', mes: hojeISO().slice(0, 7) })}>Métricas do mês</button>
-      <button class="btn pri" onClick=${() => setM({ data_publicacao: hojeISO(), canais: ['instagram', 'facebook', 'linkedin'], status: 'rascunho' })}>Novo post</button><//>
-    <section class="card" style="background:#FFF8E8;border-color:#F2D9A0"><b>Publicação automática pendente.</b> <span class="sub">O agendamento direto no Instagram e Facebook entra com a integração da Meta; o LinkedIn depende de aprovação da API. Por enquanto, o calendário organiza e coleta as aprovações.</span></section>
-    <section class="card">
-      <div class="topo" style="margin-bottom:12px"><div class="acoes"><button class="btn pq" onClick=${() => navegar(-1)} aria-label="Mês anterior">‹</button><h2>${tituloMes(primeiro)}</h2><button class="btn pq" onClick=${() => navegar(1)} aria-label="Próximo mês">›</button></div>
-        <div class="acoes">${posts && html`<${Pill} k="info">${posts.length} post(s) no mês<//>`}${aguard > 0 && html`<${Pill} k="warn">${aguard} aguardando aprovação<//>`}</div></div>
-      ${!posts ? html`<${Carregando} />` : html`<div class="tabela"><div class="cal">
-        ${['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => html`<b class="sub" style="padding:0 8px">${d}</b>`)}
-        ${diasCal.slice(0, semanas * 7).map(d => { const k = iso(d); const ps = posts.filter(p => p.data_publicacao === k); return html`<div class=${'dia' + (d.getMonth() !== mm - 1 ? ' fora' : '')}><span>${d.getDate()}</span>
-          ${ps.map(p => html`<button class="post" onClick=${() => setM(p)}><b>${p.titulo}</b><span class="sub">${(p.canais || []).map(c => c.slice(0, 2).toUpperCase()).join(' · ')}</span><${PillDe} mapa=${ST_POST} v=${p.status} /></button>`)}</div>`; })}
-      </div></div>`}
-    </section>
+      <div class="acoes"><button class="btn pq" onClick=${() => navegar(-1)} aria-label="Mês anterior">‹</button><b style="min-width:150px;text-align:center">${tituloMes(primeiro)}</b><button class="btn pq" onClick=${() => navegar(1)} aria-label="Próximo mês">›</button></div>
+      <button class="btn" onClick=${() => setMr({ rede: 'instagram', mes: hojeISO().slice(0, 7) })}>Métricas do mês</button><//>
+    <${LembreteCalendarios} />
+    ${cid && html`<${CalendarioEquipe} key=${cid + mes} cid=${cid} mes=${mes} cliente=${nomeCli} />`}
     <section class="card tabela"><h2>Métricas lançadas</h2>${rmet.length ? html`<table><thead><tr><th>Mês</th><th>Rede</th><th>Seguidores</th><th>Alcance</th><th>Engajamento</th><th>Visitas ao perfil</th></tr></thead><tbody>
       ${rmet.map(x => html`<tr><td>${mesBR(x.mes)}</td><td>${(REDES.find(r => r[0] === x.rede) || [])[1]}</td><td>${x.seguidores != null ? inteiro(x.seguidores) : '—'}</td><td>${x.alcance != null ? inteiro(x.alcance) : '—'}</td><td>${x.engajamento != null ? inteiro(x.engajamento) : '—'}</td><td>${x.visitas_perfil != null ? inteiro(x.visitas_perfil) : '—'}</td></tr>`)}</tbody></table>` : html`<p class="vazio">Nenhuma métrica lançada. Use "Métricas do mês" para alimentar o painel do cliente.</p>`}</section>
     ${mr && html`<${FormModal} titulo="Métricas das redes" inicial=${mr} onSalvar=${salvarRede} onFechar=${() => setMr(null)} rotulo="Salvar mês" campos=${[
       { n: 'rede', l: 'Rede', tipo: 'sel', vazio: false, op: REDES }, { n: 'mes', l: 'Mês', tipo: 'month', obrig: true }, { n: 'seguidores', l: 'Seguidores no fim do mês', tipo: 'number' },
       { n: 'alcance', l: 'Alcance no mês', tipo: 'number' }, { n: 'engajamento', l: 'Interações no mês', tipo: 'number', ajuda: 'Curtidas, comentários, compartilhamentos e salvamentos.' }, { n: 'visitas_perfil', l: 'Visitas ao perfil', tipo: 'number' }, { n: 'observacao', l: 'Comentário para o cliente', tipo: 'area' }]} />`}
-    ${m && html`<${FormModal} titulo=${m.id ? 'Editar post' : 'Novo post'} inicial=${m} onSalvar=${salvar} onFechar=${() => setM(null)}
-      antes=${m.comentario_cliente ? html`<div class="card" style="background:#FDE2E0;border-color:#F3B9B3"><b>Comentário do cliente:</b> ${m.comentario_cliente}</div>` : null}
-      campos=${[{ n: 'data_publicacao', l: 'Data de publicação', tipo: 'date', obrig: true }, { n: 'titulo', l: 'Tema do post', obrig: true }, { n: 'legenda', l: 'Legenda', tipo: 'area' },
-        { n: 'arte_url', l: 'Link da arte', ph: 'Link do Canva, Drive…' }, { n: 'canais', l: 'Canais', tipo: 'checks', op: CANAIS }, { n: 'status', l: 'Status', tipo: 'sel', vazio: false, op: opts(ST_POST), ajuda: 'Use "Aguardando aprovação" para o cliente ver e aprovar no portal.' }]} />`}`;
+`;
 }
 
 // ---------- campanhas e integrações
@@ -1383,7 +1374,7 @@ function Portal({ perfil, rota }) {
   const cid = perfil.cliente_id;
   const carregar = async () => {
     const hoje = new Date().toISOString();
-    const [cli, onb, posts, props, conts, cobs, reusF, reusP, nfs, sols, camps, cmet, rmet, tars, ents] = await Promise.all([
+    const [cli, onb, posts, props, conts, cobs, reusF, reusP, nfs, sols, camps, cmet, rmet, tars, ents, cals] = await Promise.all([
       sb.from('clientes').select('nome_empresa').eq('id', cid).single(),
       sb.from('onboarding_itens').select('*').order('ordem'),
       sb.from('posts').select('*').neq('status', 'rascunho').order('data_publicacao'),
@@ -1398,9 +1389,10 @@ function Portal({ perfil, rota }) {
       sb.from('campanha_metricas').select('*').order('mes'),
       sb.from('redes_metricas').select('*').order('mes'),
       sb.from('tarefas').select('id,titulo,status,prazo,origem_reuniao_id'),
-      sb.from('entregas').select('id,titulo,status,versao')]);
+      sb.from('entregas').select('id,titulo,status,versao'),
+      sb.from('calendarios').select('id,mes,prazo_aprovacao,status').order('mes')]);
     setD({ cli: cli.data, onb: onb.data || [], posts: posts.data || [], props: props.data || [], conts: conts.data || [], cobs: cobs.data || [], reusF: reusF.data || [], reusP: reusP.data || [],
-      nfs: nfs.data || [], sols: sols.data || [], camps: camps.data || [], cmet: cmet.data || [], rmet: rmet.data || [], tars: tars.data || [], ents: ents.data || [] });
+      nfs: nfs.data || [], sols: sols.data || [], camps: camps.data || [], cmet: cmet.data || [], rmet: rmet.data || [], tars: tars.data || [], ents: ents.data || [], cals: cals.data || [] });
   };
   useEffect(() => { carregar(); }, []);
   if (!d) return html`<${Carregando} />`;
@@ -1411,7 +1403,7 @@ function Portal({ perfil, rota }) {
   let corpo;
   if (rota.startsWith('/contrato/')) corpo = html`<${PortalContrato} id=${rota.split('/')[2]} perfil=${perfil} onMudou=${carregar} />`;
   else if (atual === '/aprovacoes') corpo = html`<${PortalAprovacoes} cid=${cid} onMudou=${carregar} />`;
-  else if (atual === '/calendario') corpo = html`<${PortalCalendario} posts=${d.posts} onMudou=${carregar} />`;
+  else if (atual === '/calendario') corpo = html`<${CalendarioCliente} cid=${cid} onMudou=${carregar} legado=${html`<${PortalCalendario} posts=${d.posts.filter(p => !p.calendario_id)} onMudou=${carregar} />`} />`;
   else if (atual === '/solicitacoes') corpo = html`<${PortalSolicitacoes} sols=${d.sols} cid=${cid} onMudou=${carregar} />`;
   else if (atual === '/resultados') corpo = html`<${PortalResultados} d=${d} />`;
   else if (atual === '/reunioes') corpo = html`<${PortalReunioes} d=${d} />`;
@@ -1428,7 +1420,7 @@ const proxCobs = d => { const h0 = hojeISO(); return d.cobs.filter(c => c.status
 const PillEtapa = ({ i }) => i.concluido ? html`<${Pill} k="ok">Concluído<//>` : i.em_andamento ? html`<${Pill} k="warn">Em andamento<//>` : html`<${Pill}>Na fila<//>`;
 function PortalInicio({ d, perfil, meus, feitos, onbAberto }) {
   const ag = d.onb.filter(i => i.responsavel === 'agencia'); const agFeitos = ag.filter(i => i.concluido).length;
-  const aprovar = d.posts.filter(p => p.status === 'aguardando_aprovacao');
+  const aprovar = d.posts.filter(p => p.status === 'aguardando_aprovacao' && !p.calendario_id);
   const solVez = d.sols.filter(s => s.status === 'aguardando_cliente');
   const cobs = proxCobs(d); const atrasadas = cobs.filter(c => c.atrasada); const prox = cobs.find(c => !c.atrasada);
   const reu = d.reusF[0];
@@ -1439,6 +1431,7 @@ function PortalInicio({ d, perfil, meus, feitos, onbAberto }) {
   if (onbAberto) pend.push(html`<div><div><b>Informações para começarmos</b><div class="sub">${feitos} de ${meus.length} itens enviados</div></div><a class="btn pq pri" href="#/primeiros-passos">Continuar</a></div>`);
   d.conts.filter(k => k.status === 'aguardando_assinatura' && !k.assinado_cliente_em).forEach(k => pend.push(html`<div><div><b>Contrato para assinar</b><div class="sub">Leia e assine eletronicamente, aqui mesmo no portal</div></div><a class="btn pq pri" href=${'#/contrato/' + k.id}>Ler e assinar</a></div>`));
   d.ents.filter(e => e.status === 'aguardando_aprovacao').forEach(e => pend.push(html`<div><div><b>${e.titulo}</b><div class="sub">Nova prévia para você revisar e aprovar · versão ${e.versao}</div></div><a class="btn pq pri" href="#/aprovacoes">Revisar</a></div>`));
+  (d.cals || []).forEach(c => { const n = d.posts.filter(p => p.calendario_id === c.id && p.status === 'aguardando_aprovacao').length; if (n) pend.push(html`<div><div><b>Calendário de ${nomeMes(c.mes)}: ${n} post${n === 1 ? '' : 's'} para aprovar${c.prazo_aprovacao ? ' até ' + dd_mm(c.prazo_aprovacao) : ''}</b><div class="sub">Artes e legendas das redes sociais</div></div><a class="btn pq pri" href="#/calendario">Revisar</a></div>`); });
   if (aprovar.length) pend.push(html`<div><div><b>${aprovar.length} post(s) para aprovar</b><div class="sub">Artes e legendas do calendário</div></div><a class="btn pq pri" href="#/calendario">Revisar</a></div>`);
   solVez.forEach(s => pend.push(html`<div><div><b>${s.titulo}</b><div class="sub">A agência respondeu sua solicitação</div></div><a class="btn pq pri" href="#/solicitacoes">Ver</a></div>`));
   d.tars.filter(t => t.status === 'aguardando_cliente').forEach(t => pend.push(html`<div><div><b>${t.titulo}</b><div class="sub">Combinado em reunião${t.prazo ? ' · até ' + dataBR(t.prazo) : ''}</div></div><a class="btn pq" href="#/reunioes">Ver</a></div>`));
@@ -2203,6 +2196,298 @@ function EdAnuncioMeta({ P, db, a, i, n }) {
 function EdAnunciosM({ P, db }) {
   const novo = () => db(sb.from('meta_anuncios').insert({ plano_id: P.p.id, nome: 'Novo anúncio', formato: 'imagem', cta: 'Saiba mais', ordem: proxOrdem(P.anuncios) }), 'Anúncio criado');
   return html`${P.anuncios.map((a, i) => html`<${EdAnuncioMeta} key=${a.id} P=${P} db=${db} a=${a} i=${i} n=${P.anuncios.length} />`)}${!P.anuncios.length && html`<section class="card"><p class="vazio">Nenhum anúncio ainda.</p></section>`}<div><button class="btn pri" onClick=${novo}>Novo anúncio</button></div>`;
+}
+
+// ---------- calendário mensal de redes sociais (aprovação no portal)
+const ST_CP = { aguardando_aprovacao: ['Aguardando você', 'cs-ag', '#F5A122'], ajuste_solicitado: ['Ajuste pedido', 'cs-aj', '#E5484D'], aprovado: ['Aprovado', 'cs-ok', '#10D885'], agendado: ['Aprovado', 'cs-ok', '#10D885'], publicado: ['Publicado', 'cs-ok', '#10D885'], rascunho: ['Rascunho', 'cs-ra', '#B9C7C0'] };
+const ST_CP_EQ = { ...ST_CP, aguardando_aprovacao: ['Aguardando cliente', 'cs-ag', '#F5A122'] };
+const grupoSt = s => s === 'aguardando_aprovacao' ? 'aguardando' : s === 'ajuste_solicitado' ? 'ajuste' : s === 'rascunho' ? 'rascunho' : 'aprovado';
+const FORMATOS_POST = [['imagem', 'Imagem'], ['carrossel', 'Carrossel'], ['reels', 'Reels'], ['stories', 'Stories']];
+const ST_CAL = { rascunho: ['Rascunho', 'neu'], enviado: ['Enviado ao cliente', 'warn'], concluido: ['Concluído', 'ok'] };
+const CORES_TEMA = ['#10D885', '#3B82F6', '#F5A122', '#A855F7', '#94A3B8', '#E5484D', '#14B8A6', '#EC4899'];
+const FERIADOS_FIXOS = { '01-01': 'Ano Novo', '04-21': 'Tiradentes', '05-01': 'Dia do Trabalho', '09-07': 'Independência', '10-12': 'Nossa Senhora Aparecida', '11-02': 'Finados', '11-15': 'Proclamação da República', '11-20': 'Consciência Negra', '12-25': 'Natal' };
+const DSEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const dd_mm = d => d ? String(d).slice(8, 10) + '/' + String(d).slice(5, 7) : '';
+const diaSem = d => DSEM[new Date(d + 'T12:00:00').getDay()];
+const hhmm = h => h ? String(h).slice(0, 5) : '';
+const nomeMes = m => { const t = new Date(String(m).slice(0, 7) + '-15T12:00:00').toLocaleDateString('pt-BR', { month: 'long' }); return t; };
+const tituloCal = m => { const t = new Date(String(m).slice(0, 7) + '-15T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
+const isoD = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const PillCP = ({ s, eq }) => { const x = (eq ? ST_CP_EQ : ST_CP)[s] || [s, 'cs-ra']; return html`<span class=${'cs-pill ' + x[1]}>${x[0]}</span>`; };
+const Tema = ({ p }) => p ? html`<span class="cs-tema" style=${'--c:' + p.cor}>${p.nome}</span>` : null;
+
+async function carregarCalendario(id) {
+  const { data: cal } = await sb.from('calendarios').select('*, clientes(nome_empresa)').eq('id', id).maybeSingle();
+  if (!cal) return null;
+  const [pi, po] = await Promise.all([sb.from('calendario_pilares').select('*').eq('calendario_id', id).order('ordem').order('nome'),
+    sb.from('posts').select('*').eq('calendario_id', id).order('data_publicacao').order('hora')]);
+  const posts = po.data || [], ids = posts.map(p => p.id);
+  const [mi, co, ve, an] = await Promise.all([
+    ids.length ? sb.from('post_midias').select('*').in('post_id', ids).order('ordem').order('criado_em') : { data: [] },
+    ids.length ? sb.from('post_comentarios').select('*').in('post_id', ids).order('criado_em') : { data: [] },
+    ids.length ? sb.from('post_versoes').select('post_id,versao,snapshot').in('post_id', ids) : { data: [] },
+    sb.from('posts').select('id,titulo,formato,post_midias(arquivo_path,tipo,proporcao,ordem)').eq('cliente_id', cal.cliente_id).eq('status', 'publicado').lt('data_publicacao', cal.mes).order('data_publicacao', { ascending: false }).limit(6)]);
+  return { cal, cliente: cal.clientes?.nome_empresa || '', pilares: pi.data || [], posts, midias: mi.data || [], coments: co.data || [], versoes: ve.data || [], antigos: an.data || [] };
+}
+const midiasDe = (C, p) => C.midias.filter(m => m.post_id === p.id);
+const feedDe = (C, p) => { const m = midiasDe(C, p); const f = m.filter(x => x.proporcao !== '9:16'); return f.length ? f : m; };
+const storyDe = (C, p) => { const m = midiasDe(C, p); return m.find(x => x.proporcao === '9:16') || m[0]; };
+const capaDe = (C, p) => feedDe(C, p)[0];
+const pilarDe = (C, p) => C.pilares.find(x => x.id === p.pilar_id);
+const contagem = posts => { const c = { aprovado: 0, ajuste: 0, aguardando: 0, rascunho: 0 }; posts.forEach(p => c[grupoSt(p.status)]++); return c; };
+// "Atualizado": voltou ao cliente com nova versão
+const atualizado = (C, p) => p.versao > 1 && p.status === 'aguardando_aprovacao';
+// o que mudou em relação à versão anterior
+function mudouDesde(C, p) {
+  const ant = C.versoes.find(v => v.post_id === p.id && v.versao === p.versao - 1)?.snapshot; if (!ant) return [];
+  const r = []; if ((ant.legenda || '') !== (p.legenda || '')) r.push('legenda'); if ((ant.hashtags || '') !== (p.hashtags || '')) r.push('hashtags');
+  const am = (ant.midias || []).map(m => m.arquivo_path).join('|'), nm = midiasDe(C, p).map(m => m.arquivo_path).join('|'); if (am !== nm) r.push('arte');
+  if (ant.data_publicacao !== p.data_publicacao || hhmm(ant.hora) !== hhmm(p.hora)) r.push('data ou hora');
+  return r;
+}
+
+function MidiaPost({ m, cls, alt, ctrl }) {
+  if (!m) return html`<div class=${'cs-sem-arte ' + (cls || '')}><span>Arte em produção</span></div>`;
+  return m.tipo === 'video' ? html`<video class=${cls} src=${urlMidia(m.arquivo_path) + (ctrl ? '' : '#t=1')} controls=${!!ctrl} playsinline muted preload="metadata" aria-label=${alt || 'Vídeo do post'}></video>` : html`<img class=${cls} src=${urlMidia(m.arquivo_path)} alt=${alt || 'Arte do post'} loading="lazy" />`;
+}
+
+// ---------- portal do cliente
+function CalendarioCliente({ cid, onMudou, legado }) {
+  const [cals, setCals] = useState(null); const [sel, setSel] = useState(null); const [C, setC] = useState(null);
+  useEffect(() => { sb.from('calendarios').select('id,mes,status,prazo_aprovacao,posts(status)').order('mes', { ascending: false }).then(r => {
+    const l = r.data || []; setCals(l); const pend = [...l].reverse().find(c => (c.posts || []).some(p => p.status === 'aguardando_aprovacao')); setSel((pend || l[0])?.id || null); }); }, []);
+  const recarregar = async () => { if (sel) setC(await carregarCalendario(sel)); onMudou && onMudou(); };
+  useEffect(() => { setC(null); if (sel) carregarCalendario(sel).then(setC); }, [sel]);
+  if (!cals) return html`<${Carregando} />`;
+  if (!cals.length) return legado;
+  return html`${cals.length > 1 && html`<div class="tabs" role="group" aria-label="Mês do calendário">${cals.map(c => html`<button class=${sel === c.id ? 'on' : ''} onClick=${() => setSel(c.id)}>${tituloCal(c.mes)}</button>`)}</div>`}
+    ${!C ? html`<${Carregando} />` : html`<${CalendarioVisao} key=${C.cal.id} C=${C} cliente=${true} onMudou=${recarregar} />`}`;
+}
+
+// visão do calendário (portal do cliente; a equipe usa como prévia)
+function CalendarioVisao({ C, cliente, onMudou }) {
+  const [vis, setVis] = useState('geral'); const [fs, setFs] = useState('todos'); const [fp, setFp] = useState('todos'); const [ab, setAb] = useState(null);
+  const { cal, posts } = C, c = contagem(posts), tot = posts.length || 1;
+  const filtrados = posts.filter(p => (fs === 'todos' || grupoSt(p.status) === fs) && (fp === 'todos' || p.pilar_id === fp));
+  const pend = posts.filter(p => p.status === 'aguardando_aprovacao');
+  const prazoPassou = cal.prazo_aprovacao && cal.prazo_aprovacao < hojeISO();
+  const aprovarTodos = async () => { if (!confirm('Aprovar os ' + pend.length + ' posts que ainda aguardam sua resposta?')) return;
+    const r = await sb.from('posts').update({ status: 'aprovado' }).eq('calendario_id', cal.id).eq('status', 'aguardando_aprovacao'); if (ok(r, 'Posts aprovados!')) onMudou(); };
+  const Filtros = () => html`<div class="cs-filtros"><span class="sub">Status:</span>${[['todos', 'Todos'], ['aguardando', 'Aguardando você'], ['ajuste', 'Ajuste pedido'], ['aprovado', 'Aprovado']].map(([k, t]) => html`<button class=${'cs-chip' + (fs === k ? ' on' : '')} aria-pressed=${fs === k} onClick=${() => setFs(k)}>${t}</button>`)}
+    ${C.pilares.length > 0 && html`<span class="sub" style="margin-left:8px">Tema:</span><button class=${'cs-chip' + (fp === 'todos' ? ' on' : '')} aria-pressed=${fp === 'todos'} onClick=${() => setFp('todos')}>Todos</button>${C.pilares.map(x => html`<button class=${'cs-chip' + (fp === x.id ? ' on' : '')} aria-pressed=${fp === x.id} onClick=${() => setFp(x.id)}>${x.nome}</button>`)}`}</div>`;
+  const Mini = ({ p, hora }) => { const pi = pilarDe(C, p), x = ST_CP[p.status] || ST_CP.rascunho; return html`<button class="cs-mini" style=${'--c:' + (pi?.cor || '#B9C7C0')} onClick=${() => setAb(p.id)} aria-label=${p.titulo + ', ' + x[0]}><${MidiaPost} m=${capaDe(C, p)} cls="cs-mini-img" alt="" /><span>${hora ? html`<i class="hr">${hhmm(p.hora)} · ${(FORMATOS_POST.find(f => f[0] === p.formato) || [])[1]}</i>` : html`${diaSem(p.data_publicacao)} ${dd_mm(p.data_publicacao)} · `}${p.titulo}</span><i class="st" style=${'background:' + x[2]} title=${x[0]}></i></button>`; };
+  let corpo;
+  if (vis === 'geral') {
+    const faixas = [[1, 7], [8, 14], [15, 21], [22, 28], [29, 31]];
+    corpo = html`<div class="cs-grid" style="margin-bottom:16px">
+        ${cal.objetivo && html`<div class="card"><span class="sub">Objetivo do mês</span><h3 class="cs-h3">${cal.objetivo}</h3></div>`}
+        <div class="card"><span class="sub">Frequência</span><h3 class="cs-h3">${posts.length} post${posts.length === 1 ? '' : 's'}${cal.frequencia ? ' · ' + cal.frequencia : ''}</h3></div>
+        <div class="card"><span class="sub">Precisa de você</span><h3 class="cs-h3">${pend.length ? pend.length + ' post' + (pend.length === 1 ? '' : 's') + ' para revisar' : 'Tudo respondido ✓'}</h3>${pend.length > 0 && html`<p style="margin:10px 0 0"><button class="btn pri pq" onClick=${() => { setFs('aguardando'); setVis('lista'); }}>Começar a revisar</button></p>`}</div></div>
+      ${C.pilares.length > 0 && html`<h2 class="cs-h2">Temas do mês</h2><div class="cs-pilares">${C.pilares.map(x => { const n = posts.filter(p => p.pilar_id === x.id).length; return html`<div class="card" style=${'--c:' + x.cor}><h3>${x.nome}</h3>${x.descricao && html`<p class="sub" style="margin:4px 0 8px">${x.descricao}</p>`}<b>${n} post${n === 1 ? '' : 's'}</b></div>`; })}</div>`}
+      <h2 class="cs-h2">Semana a semana</h2><div class="card">${faixas.map(([a, b], i) => { const ps = posts.filter(p => { const d = +p.data_publicacao.slice(8); return d >= a && d <= b; }); if (i === 4 && !ps.length) return null;
+        return html`<div class="cs-semana"><b>${i < 4 ? (i + 1) + 'ª semana' : 'Fim do mês'}<br /><span class="sub">${String(a).padStart(2, '0')} a ${String(Math.min(b, 31)).padStart(2, '0')}/${String(cal.mes).slice(5, 7)}</span></b><div class="cs-semana-l">${ps.length ? ps.map(p => html`<${Mini} p=${p} />`) : html`<span class="sub">Sem posts</span>`}</div></div>`; })}</div>`;
+  } else if (vis === 'cal') {
+    const [a, m] = String(cal.mes).split('-').map(Number), ini = new Date(a, m - 1, 1), off = (ini.getDay() + 6) % 7, nd = new Date(a, m, 0).getDate(), totC = Math.ceil((off + nd) / 7) * 7;
+    corpo = html`<${Filtros} /><div class="cs-cal">${['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => html`<div class="dsem">${d}</div>`)}
+      ${Array.from({ length: totC }, (_, i) => { const d = i - off + 1; if (d < 1 || d > nd) return html`<div class="cs-dia fora"></div>`;
+        const iso = String(cal.mes).slice(0, 8) + String(d).padStart(2, '0'), fer = FERIADOS_FIXOS[iso.slice(5)], ps = filtrados.filter(p => p.data_publicacao === iso);
+        if (!ps.length && !fer) return html`<div class=${'cs-dia vazio-m' + (i % 7 >= 5 ? ' fds' : '')}><span class="n">${d}</span></div>`;
+        return html`<div class=${'cs-dia' + (i % 7 >= 5 ? ' fds' : '')}><span class=${'n' + (fer ? ' feriado' : '')}>${d}${fer ? ' · ' + fer : ''} <span class="sub cs-so-movel">${diaSem(iso)}</span></span>${ps.map(p => html`<${Mini} p=${p} hora=${true} />`)}</div>`; })}</div>
+      <p class="sub" style="margin-top:12px">Clique em um post para ver a arte, a legenda e aprovar. A bolinha indica o status: verde aprovado, laranja aguardando você, vermelho ajuste pedido.</p>`;
+  } else if (vis === 'feed') {
+    const ordem = [...posts].filter(p => p.formato !== 'stories').sort((x, y) => (y.data_publicacao + hhmm(y.hora)).localeCompare(x.data_publicacao + hhmm(x.hora)));
+    corpo = html`<p class="sub" style="text-align:center;margin:0 0 14px">Assim o perfil fica no fim de ${nomeMes(cal.mes)}, com os posts novos em cima dos que já foram publicados. Toque em um post para revisar.</p>
+      <div class="cs-perfil"><div class="cab"><div class="foto">${iniciais(C.cliente)}</div><div style="flex:1;min-width:0"><b>${C.cliente}</b><div class="nums"><div><b>${ordem.length + C.antigos.length}</b>posts</div><div><b>—</b>seguidores</div><div><b>—</b>seguindo</div></div></div></div>
+      <div class="cs-ig-grid">${ordem.map(p => html`<button onClick=${() => setAb(p.id)} aria-label=${p.titulo}><${MidiaPost} m=${capaDe(C, p)} alt="" /><span class="tipo" aria-hidden="true">${p.formato === 'carrossel' ? '❐' : p.formato === 'reels' ? '▶' : ''}</span><span class="marca"><${PillCP} s=${p.status} /></span></button>`)}
+        ${C.antigos.map(p => { const m = (p.post_midias || []).sort((a, b) => a.ordem - b.ordem).find(x => x.proporcao !== '9:16'); return html`<button disabled aria-label="Post já publicado"><${MidiaPost} m=${m} cls="antigo" alt="Post já publicado" /></button>`; })}</div></div>
+      ${!C.antigos.length && html`<p class="sub" style="text-align:center;margin-top:10px">Os posts já publicados aparecem aqui embaixo assim que forem marcados como publicados.</p>`}`;
+  } else {
+    corpo = html`<div class="cs-acoes-topo"><${Filtros} />${cliente && pend.length > 0 && html`<button class="btn" onClick=${aprovarTodos}>Aprovar os ${pend.length} pendentes</button>`}</div>
+      ${filtrados.length ? html`<div class="cs-lista">${filtrados.map(p => { const nc = C.coments.filter(x => x.post_id === p.id).length, n = feedDe(C, p).length; return html`<div class="cs-item"><button class="cs-item-img" onClick=${() => setAb(p.id)} aria-label=${'Revisar ' + p.titulo}><${MidiaPost} m=${capaDe(C, p)} alt="" /></button><div class="corpo">
+        <div class="cs-linha"><b>${diaSem(p.data_publicacao)}, ${dd_mm(p.data_publicacao)}${p.hora ? ' · ' + hhmm(p.hora) : ''}</b><span><${PillCP} s=${p.status} />${atualizado(C, p) && html` <span class="cs-pill cs-up">Atualizado</span>`}</span></div>
+        <div class="cs-linha" style="justify-content:flex-start"><${Tema} p=${pilarDe(C, p)} /><span class="sub">${(FORMATOS_POST.find(f => f[0] === p.formato) || [])[1]}${n > 1 ? ' · ' + n + ' cards' : ''}</span></div>
+        <b>${p.titulo}</b><p>${p.legenda}</p>${nc > 0 && html`<span class="sub">💬 ${nc} comentário${nc === 1 ? '' : 's'}</span>`}
+        <div class="rod"><button class="btn pq pri" onClick=${() => setAb(p.id)}>Revisar</button>${cliente && p.status === 'aguardando_aprovacao' && html`<button class="btn pq" onClick=${async () => { if (ok(await sb.from('posts').update({ status: 'aprovado' }).eq('id', p.id), 'Post aprovado!')) onMudou(); }}>Aprovar</button>`}</div></div></div>`; })}</div>` : html`<p class="vazio" style="text-align:center">Nenhum post com esses filtros.</p>`}`;
+  }
+  return html`<div class="cs">
+    <header class="cs-topo"><div class="w"><div><small>Portal ${C.cliente} · Redes sociais</small><h1>Calendário de ${tituloCal(cal.mes).toLowerCase()}</h1><p>Instagram e Facebook · ${posts.length} publicaç${posts.length === 1 ? 'ão' : 'ões'} · Agência Baraúna</p></div>
+      ${cal.prazo_aprovacao && pend.length > 0 && html`<div class=${'cs-prazo' + (prazoPassou ? ' passou' : '')}>⏰ <b>${prazoPassou ? 'O prazo era ' + dd_mm(cal.prazo_aprovacao) : 'Aprove até ' + dd_mm(cal.prazo_aprovacao)}</b> para mantermos as publicações nas datas. Itens sem resposta até lá seguem para ajuste com a agência.</div>`}
+      ${cal.status === 'concluido' && html`<div class="cs-prazo ok">✓ <b>Calendário aprovado.</b> Obrigado! Agora é com a gente.</div>`}</div>
+      <div class="cs-progresso"><div class="cs-barra" role="img" aria-label=${c.aprovado + ' aprovados, ' + c.ajuste + ' com ajuste, ' + c.aguardando + ' aguardando'}>${[['aprovado', '#10D885'], ['ajuste', '#E5484D'], ['aguardando', '#F5A122']].map(([k, cor]) => html`<i style=${'width:' + (c[k] / tot * 100) + '%;background:' + cor}></i>`)}</div>
+        <div class="cs-leg"><span style="--c:#10D885">${c.aprovado} aprovado${c.aprovado === 1 ? '' : 's'}</span><span style="--c:#E5484D">${c.ajuste} com ajuste</span><span style="--c:#F5A122">${c.aguardando} aguardando ${cliente ? 'você' : 'o cliente'}</span></div></div></header>
+    <nav class="cs-abas" aria-label="Visualizações"><div class="w" role="tablist">${[['geral', 'Visão geral'], ['cal', 'Calendário'], ['feed', 'Como fica o feed'], ['lista', 'Revisar posts']].map(([k, t]) => html`<button role="tab" aria-selected=${vis === k} class=${vis === k ? 'on' : ''} onClick=${() => setVis(k)}>${t}</button>`)}</div></nav>
+    <div class="cs-main">${corpo}</div>
+    ${ab && html`<${PostDetalhe} C=${C} id=${ab} setId=${setAb} cliente=${cliente} onMudou=${onMudou} />`}
+  </div>`;
+}
+
+// janela do post: simulação, pinos na arte, conversa e decisão
+function PostDetalhe({ C, id, setId, cliente, onMudou }) {
+  const posts = C.posts, i = posts.findIndex(p => p.id === id), p = posts[i];
+  const [rede, setRede] = useState('ig'); const [sl, setSl] = useState(0); const [mais, setMais] = useState(false); const [pino, setPino] = useState(null); const [t, setT] = useState(''); const [s, setS] = useState(false);
+  const txt = useRef(null);
+  useEffect(() => { setSl(0); setMais(false); setPino(null); setT(''); }, [id]);
+  const ir = d => { const n = posts[i + d]; if (n) setId(n.id); };
+  useEffect(() => { const k = e => { if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return; if (e.key === 'Escape') setId(null); if (e.key === 'ArrowRight') ir(1); if (e.key === 'ArrowLeft') ir(-1); };
+    addEventListener('keydown', k); document.body.style.overflow = 'hidden'; return () => { removeEventListener('keydown', k); document.body.style.overflow = ''; }; }, [i]);
+  if (!p) return null;
+  const feed = feedDe(C, p), atual = rede === 'st' ? storyDe(C, p) : feed[Math.min(sl, feed.length - 1)], n = feed.length;
+  const coments = C.coments.filter(x => x.post_id === p.id), comPino = coments.filter(x => x.pino_x != null);
+  const numPino = x => comPino.indexOf(x) + 1;
+  const pinosAqui = atual ? comPino.filter(x => x.midia_id === atual.id) : [];
+  const pi = pilarDe(C, p), leg = (p.legenda || '') + (p.hashtags ? '\n\n' + p.hashtags : ''), curta = leg.length > 125 && !mais;
+  const podeDecidir = cliente && ['aguardando_aprovacao', 'ajuste_solicitado'].includes(p.status);
+  const marcar = e => { if (!cliente || !atual || atual.tipo === 'video') return; const r = e.currentTarget.getBoundingClientRect(); setPino({ x: Math.round((e.clientX - r.left) / r.width * 1000) / 10, y: Math.round((e.clientY - r.top) / r.height * 1000) / 10, midia_id: atual.id, n: comPino.length + 1 }); setTimeout(() => txt.current && txt.current.focus(), 50); };
+  const decidir = async st => {
+    const texto = t.trim();
+    if (st === 'ajuste_solicitado' && !texto) { toast('Escreva o que precisa ajustar', 'erro'); txt.current && txt.current.focus(); return; }
+    if (!st && !texto) { toast('Escreva o comentário', 'erro'); return; }
+    setS(true);
+    if (texto) { const r = await sb.from('post_comentarios').insert({ post_id: p.id, texto, midia_id: pino?.midia_id || (rede !== 'st' && n > 1 ? atual?.id : null) || null, pino_x: pino?.x ?? null, pino_y: pino?.y ?? null }); if (!ok(r)) return setS(false); }
+    if (st) { const r = await sb.from('posts').update({ status: st }).eq('id', p.id); if (!ok(r)) return setS(false); }
+    setS(false); setT(''); setPino(null); toast(st === 'aprovado' ? 'Post aprovado!' : st ? 'Pedido de ajuste enviado para a agência' : 'Comentário enviado');
+    if (st) { const prox = posts.find((x, k) => k > i && x.status === 'aguardando_aprovacao') || posts.find(x => x.status === 'aguardando_aprovacao' && x.id !== p.id); if (prox) setId(prox.id); }
+    onMudou();
+  };
+  const arte = html`<div class=${'cs-arte' + (cliente && atual?.tipo !== 'video' ? ' marca' : '')} onClick=${marcar}><${MidiaPost} m=${atual} ctrl=${true} alt=${'Arte: ' + p.titulo} />
+    ${rede !== 'st' && pinosAqui.map(x => html`<span class="cs-pino" style=${'left:' + x.pino_x + '%;top:' + x.pino_y + '%'} title=${x.texto}>${numPino(x)}</span>`)}${pino && pino.midia_id === atual?.id && html`<span class="cs-pino novo" style=${'left:' + pino.x + '%;top:' + pino.y + '%'}>${pino.n}</span>`}
+    ${rede !== 'st' && n > 1 && html`<div class="cs-setas" onClick=${e => e.stopPropagation()}><button aria-label="Card anterior" style=${sl === 0 ? 'visibility:hidden' : ''} onClick=${() => { setSl(sl - 1); setPino(null); }}>‹</button><button aria-label="Próximo card" style=${sl >= n - 1 ? 'visibility:hidden' : ''} onClick=${() => { setSl(sl + 1); setPino(null); }}>›</button></div>`}</div>`;
+  const pontos = rede !== 'st' && n > 1 ? html`<div class="cs-pontos">${feed.map((_, k) => html`<i class=${k === sl ? 'on' : ''}></i>`)}</div>` : null;
+  const av = html`<span class="cs-av">${iniciais(C.cliente)}</span>`;
+  let celular;
+  if (rede === 'st') celular = html`<div class="cs-story"><div class="barras">${(feed.length > 1 ? feed : [0]).map(() => html`<i></i>`)}</div><div class="sh">${av}<b>${C.cliente}</b><span style="opacity:.7">· ${hhmm(p.hora)}</span></div>${arte}</div><p class="dica">Versão para Stories (9:16)${storyDe(C, p)?.proporcao !== '9:16' ? ': ainda sem arte vertical, mostrando a do feed' : ''}.</p>`;
+  else if (rede === 'fb') celular = html`<div class="cs-celular"><div class="hd">${av}<div><b>${C.cliente}</b><small>${dd_mm(p.data_publicacao)}${p.hora ? ' às ' + hhmm(p.hora) : ''} · 🌐</small></div>···</div><div class="fb-top">${curta ? leg.slice(0, 125) + '… ' : leg}${curta && html`<button class="mais" onClick=${() => setMais(true)}>Ver mais</button>`}</div>${arte}${pontos}<div class="fb-acoes"><span>👍 Curtir</span><span>💬 Comentar</span><span>↗ Compartilhar</span></div></div>${cliente && html`<p class="dica">Clique na arte para marcar um ponto e comentar.</p>`}`;
+  else celular = html`<div class="cs-celular"><div class="hd">${av}<div><b>${C.cliente}</b><small>${p.formato === 'reels' ? 'Áudio original' : 'Instagram'}</small></div>···</div>${arte}${pontos}<div class="ig-acoes">♡ 💬 ➤<span style="margin-left:auto">⌑</span></div><div class="legenda"><b>${C.cliente}</b> ${curta ? leg.slice(0, 125) + '…' : leg} ${curta && html`<button class="mais" onClick=${() => setMais(true)}>mais</button>`}</div></div>${cliente && html`<p class="dica">Clique na arte para marcar um ponto e comentar.</p>`}`;
+  const mud = atualizado(C, p) ? mudouDesde(C, p) : [];
+  return html`<div class="cs-fundo" onClick=${e => e.target === e.currentTarget && setId(null)}><div class="cs-modal" role="dialog" aria-modal="true" aria-labelledby="cs-mt">
+    <div class="esq"><div class="cs-seg" role="group" aria-label="Rede">${[['ig', 'Instagram'], ['fb', 'Facebook'], ['st', 'Stories']].map(([k, l]) => html`<button class=${rede === k ? 'on' : ''} aria-pressed=${rede === k} onClick=${() => { setRede(k); setPino(null); }}>${l}</button>`)}</div>${celular}</div>
+    <div class="dir">
+      <div class="cs-navpost"><button class="btn pq" disabled=${i === 0} onClick=${() => ir(-1)}>‹ Anterior</button><span class="sub">${i + 1} de ${posts.length}</span><button class="btn pq" disabled=${i === posts.length - 1} onClick=${() => ir(1)}>Próximo ›</button><button class="cs-x" onClick=${() => setId(null)} aria-label="Fechar">×</button></div>
+      <div><div class="cs-linha" style="justify-content:flex-start"><${PillCP} s=${p.status} eq=${!cliente} />${atualizado(C, p) && html`<span class="cs-pill cs-up">Atualizado${mud.length ? ': ' + mud.join(', ') : ''}</span>`}<${Tema} p=${pi} /></div><h2 id="cs-mt" class="cs-h2" style="margin:8px 0 0">${p.titulo}</h2></div>
+      <div class="cs-meta"><div><small>Publicação</small>${diaSem(p.data_publicacao)}, ${dd_mm(p.data_publicacao)}${p.hora ? ' às ' + hhmm(p.hora) : ''}</div><div><small>Formato</small>${(FORMATOS_POST.find(f => f[0] === p.formato) || [])[1]}${n > 1 ? ' · ' + n + ' cards' : ''}</div><div><small>Canais</small>${(p.canais || []).map(c => (CANAIS.find(x => x[0] === c) || [c, c])[1]).join(', ') || '—'}</div></div>
+      ${p.roteiro && html`<div><b class="cs-rot">Roteiro do vídeo</b><div class="cs-capt">${p.roteiro}</div></div>`}
+      <div><b class="cs-rot">Legenda</b> <span class="sub">(${tam(p.legenda)} caracteres · as primeiras ~125 aparecem antes do “mais”)</span><div class="cs-capt">${p.legenda}${p.hashtags && html`${'\n\n'}<span style="color:#00376B">${p.hashtags}</span>`}</div></div>
+      ${p.pergunta_agencia && html`<div class="cs-pergunta"><b>Pergunta da agência:</b> ${p.pergunta_agencia}</div>`}
+      <div><b class="cs-rot">Comentários</b><div class="cs-coments">${coments.length ? coments.map(x => { const k = C.midias.filter(m => m.post_id === p.id && m.proporcao !== '9:16').findIndex(m => m.id === x.midia_id); return html`<div class=${'cs-coment ' + (x.autor_agencia ? 'ag' : 'cli') + (x.resolvido ? ' res' : '')}><small>${x.autor_agencia ? 'Agência Baraúna' : cliente ? 'Você' : 'Cliente'} · ${dataHora(x.criado_em)} · v${x.versao}${k >= 0 && n > 1 ? ' · card ' + (k + 1) : ''}${x.resolvido ? ' · resolvido' : ''}</small>${x.pino_x != null && html`<span class="cs-tagpino">${numPino(x)}</span>`}${x.texto}</div>`; }) : html`<span class="sub">Nenhum comentário ainda.</span>`}</div></div>
+      ${cliente && html`<div class="campo"><label for="cs-txt">${pino ? 'Comentário no ponto ' + pino.n + (n > 1 && rede !== 'st' ? ' (card ' + (sl + 1) + ')' : '') : 'Comentário ou pedido de ajuste'}</label><textarea id="cs-txt" ref=${txt} value=${t} onInput=${e => setT(e.target.value)} placeholder="Ex.: trocar a cor do título; ajustar o texto do segundo card…"></textarea>${pino && html`<button class="lnk" style="align-self:flex-start" onClick=${() => setPino(null)}>Remover marcador</button>`}</div>
+        <div class="cs-decisao">${podeDecidir ? html`<button class="btn pri" disabled=${s} onClick=${() => decidir('aprovado')}>✓ Aprovar</button><button class="btn cs-alerta" disabled=${s} onClick=${() => decidir('ajuste_solicitado')}>Pedir ajuste</button>` : html`<${PillCP} s=${p.status} />`}<button class="btn" disabled=${s} onClick=${() => decidir(null)}>Só comentar</button>
+          <span class="sub" style="flex-basis:100%">Dica: use as setas ← → do teclado para passar de um post para o outro.</span></div>`}
+    </div>
+    ${cliente && html`<div class="cs-barra-movel">${podeDecidir ? html`<button class="btn pri" disabled=${s} onClick=${() => decidir('aprovado')}>✓ Aprovar</button>` : html`<${PillCP} s=${p.status} />`}<button class="btn" onClick=${() => { txt.current && (txt.current.scrollIntoView({ behavior: 'smooth', block: 'center' }), setTimeout(() => txt.current.focus(), 300)); }}>💬 Comentar / ajuste</button></div>`}
+  </div></div>`;
+}
+
+// ---------- equipe: montar, enviar e acompanhar
+function LembreteCalendarios({ cid }) {
+  const [l, setL] = useState([]);
+  useEffect(() => { let q = sb.from('calendarios').select('id,mes,prazo_aprovacao,cliente_id,clientes(nome_empresa),posts(status)').eq('status', 'enviado').not('prazo_aprovacao', 'is', null).lte('prazo_aprovacao', isoD(new Date(Date.now() + 3 * 864e5)));
+    if (cid) q = q.eq('cliente_id', cid); q.then(r => setL((r.data || []).map(c => ({ ...c, pend: (c.posts || []).filter(p => p.status === 'aguardando_aprovacao').length })).filter(c => c.pend > 0))); }, [cid]);
+  if (!l.length) return null;
+  return html`<section class="card cs-lembrete" role="status"><b>⏰ Prazo de aprovação chegando</b><div class="lista">${l.map(c => html`<div><div><b>${c.clientes?.nome_empresa} · ${tituloCal(c.mes)}</b><div class="sub">${c.pend} post${c.pend === 1 ? '' : 's'} sem resposta · prazo ${c.prazo_aprovacao < hojeISO() ? 'venceu em' : 'até'} ${dd_mm(c.prazo_aprovacao)}</div></div><a class="btn pq" href="#/redes">Ver calendário</a></div>`)}</div></section>`;
+}
+
+function CalendarioEquipe({ cid, mes, cliente }) {
+  const [C, setC] = useState(undefined); const [ed, setEd] = useState(null); const [mt, setMt] = useState(null); const [dc, setDc] = useState(false); const [prev, setPrev] = useState(false); const [env, setEnv] = useState(false);
+  const mesD = mes + '-01';
+  const carregar = async () => { const { data } = await sb.from('calendarios').select('id').eq('cliente_id', cid).eq('mes', mesD).maybeSingle(); setC(data ? await carregarCalendario(data.id) : null); };
+  useEffect(() => { setC(undefined); if (cid) carregar(); }, [cid, mes]);
+  if (C === undefined) return html`<${Carregando} />`;
+  const criar = async v => { const r = await sb.from('calendarios').insert({ cliente_id: cid, mes: mesD, objetivo: v.objetivo || null, frequencia: v.frequencia || null, prazo_aprovacao: v.prazo_aprovacao || null }).select('id').single(); if (!ok(r, 'Calendário criado')) return false;
+    const temas = linhasDe(v.temas); if (temas.length) await sb.from('calendario_pilares').insert(temas.map((t, k) => { const [nome, desc] = t.split('|'); return { calendario_id: r.data.id, nome: nome.trim(), descricao: desc ? desc.trim() : null, cor: CORES_TEMA[k % CORES_TEMA.length], ordem: k + 1 }; }));
+    carregar(); };
+  if (!C) return html`<section class="card"><h2>Calendário de ${tituloCal(mesD).toLowerCase()}</h2><p class="sub">${cliente} ainda não tem calendário neste mês. Crie com o objetivo, a frequência, o prazo de aprovação e os temas; depois monte os posts.</p>
+    <div><button class="btn pri" onClick=${() => setDc(true)}>Criar calendário do mês</button></div>
+    ${dc && html`<${FormModal} titulo=${'Calendário de ' + tituloCal(mesD).toLowerCase()} inicial=${{ temas: 'Dicas | Conteúdo prático para o dia a dia\nAutoridade e cases | Experiência e resultados\nBastidores | Pessoas e jeito de trabalhar\nDatas e institucional | Datas comemorativas e mensagens da marca' }} rotulo="Criar calendário" onSalvar=${criar} onFechar=${() => setDc(false)} campos=${[
+      { n: 'objetivo', l: 'Objetivo do mês', tipo: 'area', ph: 'Ex.: mostrar que existe ajuda especializada para quem usa o myLIMS' }, { n: 'frequencia', l: 'Frequência', ph: 'Ex.: terças e quintas + datas comemorativas' },
+      { n: 'prazo_aprovacao', l: 'Prazo para o cliente aprovar', tipo: 'date' }, { n: 'temas', l: 'Temas do mês (um por linha)', tipo: 'area', ajuda: 'Use “|” para a descrição. As cores podem ser trocadas depois.' }]} />`}</section>`;
+  const { cal, posts } = C, c = contagem(posts), rasc = posts.filter(p => p.status === 'rascunho').length;
+  const semArte = posts.filter(p => !midiasDe(C, p).length || !String(p.legenda || '').trim());
+  const salvarDados = async v => { if (!ok(await sb.from('calendarios').update({ objetivo: v.objetivo || null, frequencia: v.frequencia || null, prazo_aprovacao: v.prazo_aprovacao || null }).eq('id', cal.id), 'Calendário salvo')) return false; carregar(); };
+  const salvarTema = async v => { const d = { nome: v.nome, descricao: v.descricao || null, cor: v.cor || '#10D885' }; const r = mt.id ? await sb.from('calendario_pilares').update(d).eq('id', mt.id) : await sb.from('calendario_pilares').insert({ ...d, calendario_id: cal.id, ordem: C.pilares.length + 1 }); if (!ok(r, 'Tema salvo')) return false; carregar(); };
+  const enviar = async () => { if (semArte.length) return toast('Complete arte e legenda de: ' + semArte.map(p => p.titulo).join(', '), 'erro');
+    if (!confirm('Enviar o calendário de ' + tituloCal(cal.mes).toLowerCase() + ' para o cliente aprovar? ' + (rasc || posts.length) + ' post(s) passam a aparecer no portal.')) return;
+    setEnv(true); const r = await sb.rpc('calendario_enviar', { p_cal: cal.id }); setEnv(false); if (ok(r, 'Calendário enviado para aprovação')) carregar(); };
+  const [a, m] = mes.split('-').map(Number), ini = new Date(a, m - 1, 1), off = (ini.getDay() + 6) % 7, nd = new Date(a, m, 0).getDate(), totC = Math.ceil((off + nd) / 7) * 7;
+  const abertos = id => C.coments.filter(x => x.post_id === id && !x.autor_agencia && !x.resolvido).length;
+  return html`<section class="card">
+      <div class="topo" style="margin-bottom:12px"><div><h2>Calendário de ${tituloCal(cal.mes).toLowerCase()} <${PillDe} mapa=${ST_CAL} v=${cal.status} /></h2><p class="sub" style="margin:4px 0 0">${cal.objetivo || 'Sem objetivo definido'}${cal.frequencia ? ' · ' + cal.frequencia : ''}${cal.prazo_aprovacao ? ' · prazo de aprovação ' + dd_mm(cal.prazo_aprovacao) : ''}</p></div>
+        <div class="acoes"><button class="btn pq" onClick=${() => setPrev(true)}>Ver como o cliente</button><button class="btn pq" onClick=${() => setMt({ cal })}>Editar dados</button>${(cal.status === 'rascunho' || rasc > 0) && html`<button class="btn pq pri" disabled=${env || !posts.length} onClick=${enviar}>${cal.status === 'rascunho' ? 'Enviar calendário para aprovação' : 'Enviar ' + rasc + ' post(s) novo(s)'}</button>`}</div></div>
+      ${posts.length > 0 && html`<div class="cs-barra eq" role="img" aria-label="Andamento">${[['aprovado', '#10D885'], ['ajuste', '#E5484D'], ['aguardando', '#F5A122'], ['rascunho', '#DCE3DF']].map(([k, cor]) => html`<i style=${'width:' + (c[k] / posts.length * 100) + '%;background:' + cor}></i>`)}</div>
+        <div class="cs-leg eq"><span style="--c:#10D885">${c.aprovado} aprovados</span><span style="--c:#E5484D">${c.ajuste} com ajuste</span><span style="--c:#F5A122">${c.aguardando} aguardando o cliente</span>${c.rascunho > 0 && html`<span style="--c:#B9C7C0">${c.rascunho} em rascunho</span>`}</div>`}
+      ${semArte.length > 0 && cal.status === 'rascunho' && html`<p class="sub" style="color:#7A4F00;margin:10px 0 0">Antes de enviar: ${semArte.length} post(s) sem arte ou sem legenda.</p>`}
+      <div class="cs-temas"><span class="sub">Temas:</span>${C.pilares.map(x => html`<button class="cs-chip" style=${'--c:' + x.cor} onClick=${() => setMt(x)}><span class="cs-tema" style=${'--c:' + x.cor}>${x.nome}</span></button>`)}<button class="cs-chip" onClick=${() => setMt({ cor: CORES_TEMA[C.pilares.length % CORES_TEMA.length] })}>+ Tema</button></div>
+    </section>
+    <section class="card"><div class="topo" style="margin-bottom:10px"><h2>Posts do mês (${posts.length})</h2><button class="btn pri pq" onClick=${() => setEd({ data_publicacao: mesD, hora: '11:30', formato: 'imagem', canais: ['instagram', 'facebook'] })}>Novo post</button></div>
+      <div class="tabela"><div class="cs-cal eq">${['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => html`<div class="dsem">${d}</div>`)}
+        ${Array.from({ length: totC }, (_, i) => { const d = i - off + 1; if (d < 1 || d > nd) return html`<div class="cs-dia fora"></div>`; const iso = mes + '-' + String(d).padStart(2, '0'), ps = posts.filter(p => p.data_publicacao === iso), fer = FERIADOS_FIXOS[iso.slice(5)];
+          return html`<div class=${'cs-dia' + (i % 7 >= 5 ? ' fds' : '')}><span class=${'n' + (fer ? ' feriado' : '')}>${d}${fer ? ' · ' + fer : ''}</span>${ps.map(p => { const x = ST_CP_EQ[p.status] || ST_CP.rascunho, ab = abertos(p.id); return html`<button class="cs-mini" style=${'--c:' + (pilarDe(C, p)?.cor || '#B9C7C0')} onClick=${() => setEd(p)}><span><i class="hr">${hhmm(p.hora)} · ${(FORMATOS_POST.find(f => f[0] === p.formato) || [])[1]}</i>${p.titulo}${ab > 0 ? ' · 💬' + ab : ''}</span><i class="st" style=${'background:' + x[2]} title=${x[0]}></i></button>`; })}
+            <button class="cs-add" aria-label=${'Novo post em ' + dd_mm(iso)} onClick=${() => setEd({ data_publicacao: iso, hora: '11:30', formato: 'imagem', canais: ['instagram', 'facebook'] })}>+</button></div>`; })}</div></div></section>
+    ${posts.some(p => p.status === 'ajuste_solicitado' || abertos(p.id)) && html`<section class="card"><h2>Pedidos de ajuste e comentários do cliente</h2><div class="lista">${posts.filter(p => p.status === 'ajuste_solicitado' || abertos(p.id)).map(p => html`<div><div><b>${dd_mm(p.data_publicacao)} · ${p.titulo}</b><div class="sub">${C.coments.filter(x => x.post_id === p.id && !x.autor_agencia && !x.resolvido).map(x => x.texto).join(' · ').slice(0, 160) || 'Sem comentários em aberto'}</div></div><div class="acoes"><${PillCP} s=${p.status} eq=${true} /><button class="btn pq pri" onClick=${() => setEd(p)}>Abrir</button></div></div>`)}</div></section>`}
+    ${ed && html`<${EditorPost} C=${C} base=${ed} cid=${cid} onFechar=${() => setEd(null)} onMudou=${carregar} />`}
+    ${mt && (mt.cal ? html`<${FormModal} titulo="Dados do calendário" inicial=${cal} onSalvar=${salvarDados} onFechar=${() => setMt(null)} campos=${[{ n: 'objetivo', l: 'Objetivo do mês', tipo: 'area' }, { n: 'frequencia', l: 'Frequência' }, { n: 'prazo_aprovacao', l: 'Prazo para o cliente aprovar', tipo: 'date' }]} />`
+      : html`<${FormModal} titulo=${mt.id ? 'Editar tema' : 'Novo tema'} inicial=${mt} onSalvar=${salvarTema} onFechar=${() => setMt(null)} campos=${[{ n: 'nome', l: 'Nome do tema', obrig: true }, { n: 'descricao', l: 'Descrição', tipo: 'area' }, { n: 'cor', l: 'Cor', tipo: 'color' }]} antes=${mt.id ? html`<button class="lnk" style="align-self:flex-end;color:#A12A1F" type="button" onClick=${async () => { if (confirm('Excluir o tema “' + mt.nome + '”? Os posts ficam sem tema.') && ok(await sb.from('calendario_pilares').delete().eq('id', mt.id), 'Tema excluído')) { setMt(null); carregar(); } }}>Excluir tema</button>` : null} />`)}
+    ${prev && html`<div class="fundo" onClick=${e => e.target === e.currentTarget && setPrev(false)}><div class="modal" style="max-width:1200px;padding:0;overflow:hidden" role="dialog" aria-modal="true" aria-label="Prévia do cliente"><header style="padding:14px 18px"><h2>Como o cliente vê</h2><button class="btn pq" onClick=${() => setPrev(false)}>Fechar</button></header><${CalendarioVisao} C=${C} cliente=${false} onMudou=${carregar} /></div></div>`}`;
+}
+
+function EditorPost({ C, base, cid, onFechar, onMudou }) {
+  const [p, setP] = useState({ ...base, hora: hhmm(base.hora), legenda: base.legenda || '', hashtags: base.hashtags || '', titulo: base.titulo || '', roteiro: base.roteiro || '', pergunta_agencia: base.pergunta_agencia || '', pilar_id: base.pilar_id || '' });
+  const [s, setS] = useState(false); const [up, setUp] = useState(false); const [resp, setResp] = useState(''); const [mid, setMid] = useState([]); const [com, setCom] = useState([]);
+  const id = p.id;
+  const recarregarItens = async () => { if (!id) return; const [a, b] = await Promise.all([sb.from('post_midias').select('*').eq('post_id', id).order('ordem').order('criado_em'), sb.from('post_comentarios').select('*').eq('post_id', id).order('criado_em')]); setMid(a.data || []); setCom(b.data || []); };
+  useEffect(() => { recarregarItens(); }, [id]);
+  const set = (k, v) => setP(o => ({ ...o, [k]: v }));
+  const salvar = async () => {
+    if (!p.titulo.trim() || !p.data_publicacao) return toast('Preencha o título e a data', 'erro');
+    setS(true);
+    const d = { cliente_id: cid, calendario_id: C.cal.id, data_publicacao: p.data_publicacao, hora: p.hora || null, titulo: p.titulo.trim(), legenda: p.legenda || null, hashtags: p.hashtags.trim() || null, formato: p.formato, pilar_id: p.pilar_id || null, roteiro: p.roteiro.trim() || null, pergunta_agencia: p.pergunta_agencia.trim() || null, canais: p.canais || ['instagram', 'facebook'] };
+    const r = id ? await sb.from('posts').update(d).eq('id', id).select().single() : await sb.from('posts').insert({ ...d, status: C.cal.status === 'rascunho' ? 'rascunho' : 'rascunho' }).select().single();
+    setS(false); if (!ok(r, id ? 'Post salvo' : 'Post criado. Agora envie as artes.')) return false;
+    setP(o => ({ ...o, id: r.data.id, status: r.data.status, versao: r.data.versao })); onMudou(); return true;
+  };
+  const subir = async ev => {
+    const fs = [...ev.target.files]; ev.target.value = ''; if (!fs.length || !id) return;
+    setUp(true); let o = mid.reduce((x, m) => Math.max(x, m.ordem || 0), 0) + 1;
+    for (const f of fs) {
+      if (!/^(image|video)\//.test(f.type)) { toast('Envie imagem ou vídeo: ' + f.name, 'erro'); continue; }
+      if (f.size > 50 * 1024 * 1024) { toast('Arquivo acima de 50 MB: ' + f.name, 'erro'); continue; }
+      const nome = f.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-'), path = aleatorio() + '/' + nome;
+      const r = await sb.storage.from('previas').upload(path, f, { contentType: f.type, cacheControl: '3600' }); if (r.error) { toast(r.error.message, 'erro'); continue; }
+      const prop = await new Promise(res => { const fim = (w, h) => res(!w || !h ? '4:5' : h / w > 1.5 ? '9:16' : h / w > 1.12 ? '4:5' : '1:1'); if (f.type.startsWith('image/')) { const im = new Image(); im.onload = () => fim(im.naturalWidth, im.naturalHeight); im.onerror = () => res('4:5'); im.src = URL.createObjectURL(f); } else { const v = document.createElement('video'); v.preload = 'metadata'; v.onloadedmetadata = () => fim(v.videoWidth, v.videoHeight); v.onerror = () => res('9:16'); v.src = URL.createObjectURL(f); } });
+      await sb.from('post_midias').insert({ post_id: id, arquivo_path: path, tipo: f.type.startsWith('video/') ? 'video' : 'imagem', proporcao: prop, ordem: o++ });
+    }
+    setUp(false); toast('Artes enviadas'); recarregarItens(); onMudou();
+  };
+  const moverM = async (k, dlt) => { const a = mid[k], b = mid[k + dlt]; if (!a || !b) return; await sb.from('post_midias').update({ ordem: b.ordem === a.ordem ? k + dlt : b.ordem }).eq('id', a.id); await sb.from('post_midias').update({ ordem: b.ordem === a.ordem ? k : a.ordem }).eq('id', b.id); recarregarItens(); onMudou(); };
+  const responder = async () => { if (!resp.trim()) return; if (ok(await sb.from('post_comentarios').insert({ post_id: id, texto: resp.trim() }), 'Resposta enviada')) { setResp(''); recarregarItens(); onMudou(); } };
+  const resolver = async (x, v) => { if (ok(await sb.from('post_comentarios').update({ resolvido: v }).eq('id', x.id))) { recarregarItens(); onMudou(); } };
+  const novaVersao = async () => { if (!(await salvar())) return; if (!confirm('Enviar a nova versão deste post ao cliente? Ele volta para “Aguardando você” com o selo “Atualizado”.')) return;
+    const r = await sb.rpc('post_enviar_versao', { p_post: id }); if (ok(r, 'Versão ' + r.data + ' enviada ao cliente')) { onMudou(); onFechar(); } };
+  const excluir = async () => { if (confirm('Excluir este post?') && ok(await sb.from('posts').delete().eq('id', id), 'Post excluído')) { onMudou(); onFechar(); } };
+  const nl = tam(p.legenda), nh = (p.hashtags.match(/#[^\s#]+/g) || []).length, comPino = com.filter(x => x.pino_x != null);
+  return html`<div class="fundo" onClick=${e => e.target === e.currentTarget && onFechar()}><div class="modal cs-editor" role="dialog" aria-modal="true" aria-label=${id ? 'Editar post' : 'Novo post'}>
+    <header><div><h2>${id ? p.titulo || 'Post' : 'Novo post'}</h2>${id && html`<span class="sub"><${PillCP} s=${p.status} eq=${true} /> · versão ${p.versao || 1}</span>`}</div><button class="btn pq" onClick=${onFechar}>Fechar</button></header>
+    <div class="cs-ed-cols"><div class="form">
+      <div class="ads-form-grid"><div class="campo"><label for="pdt">Data *</label><input id="pdt" type="date" value=${p.data_publicacao} onInput=${e => set('data_publicacao', e.target.value)} /></div>
+        <div class="campo"><label for="phr">Hora</label><input id="phr" type="time" value=${p.hora} onInput=${e => set('hora', e.target.value)} /></div>
+        <div class="campo"><label for="pfm">Formato</label><select id="pfm" value=${p.formato} onChange=${e => set('formato', e.target.value)}>${FORMATOS_POST.map(([k, l]) => html`<option value=${k}>${l}</option>`)}</select></div>
+        <div class="campo"><label for="ptm">Tema</label><select id="ptm" value=${p.pilar_id} onChange=${e => set('pilar_id', e.target.value)}><option value="">Sem tema</option>${C.pilares.map(x => html`<option value=${x.id}>${x.nome}</option>`)}</select></div></div>
+      <div class="campo"><label for="pti">Título interno *</label><input id="pti" value=${p.titulo} onInput=${e => set('titulo', e.target.value)} placeholder="Ex.: 5 relatórios essenciais no myLIMS" /></div>
+      <div class="campo"><label for="plg">Legenda <span class=${'ads-cont' + (nl > 2200 ? ' over' : '')}>${nl}/2.200</span></label><textarea id="plg" style="min-height:140px" value=${p.legenda} onInput=${e => set('legenda', e.target.value)}></textarea><span class="sub">As primeiras ~125 caracteres aparecem antes do “mais”: ${nl > 125 ? '“' + p.legenda.slice(0, 125).trim() + '…”' : 'a legenda inteira aparece.'}</span></div>
+      <div class="campo"><label for="pht">Hashtags <span class=${'ads-cont' + (nh > 30 ? ' over' : nh > 15 ? ' av' : '')}>${nh} hashtag${nh === 1 ? '' : 's'}</span></label><input id="pht" value=${p.hashtags} onInput=${e => set('hashtags', e.target.value)} placeholder="#myLIMS #laboratorio" /><span class="sub">O Instagram aceita até 30; entre 3 e 15 costuma funcionar melhor.</span></div>
+      ${['reels', 'stories'].includes(p.formato) && html`<div class="campo"><label for="prt">Roteiro do vídeo</label><textarea id="prt" value=${p.roteiro} onInput=${e => set('roteiro', e.target.value)}></textarea></div>`}
+      <div class="campo"><label for="ppg">Pergunta para o cliente</label><input id="ppg" value=${p.pergunta_agencia} onInput=${e => set('pergunta_agencia', e.target.value)} placeholder="Ex.: podemos citar o nome do cliente neste case?" /></div>
+      <div class="acoes"><button class="btn pri" disabled=${s} onClick=${salvar}>${s ? 'Salvando…' : id ? 'Salvar post' : 'Criar post'}</button>${id && p.status === 'ajuste_solicitado' && html`<button class="btn pri" disabled=${s} onClick=${novaVersao}>Salvar e enviar nova versão</button>`}${id && html`<button class="btn" style="color:#A12A1F" onClick=${excluir}>Excluir</button>`}</div>
+    </div>
+    <div class="form">
+      <div><h3>Artes (${mid.length})</h3><p class="sub" style="margin:4px 0 8px">Cards do feed na ordem do carrossel e, se houver, a versão 9:16 para Stories. A proporção é detectada pelo tamanho do arquivo.</p>
+        ${!id ? html`<p class="vazio">Crie o post para enviar as artes.</p>` : html`<div class="cs-ed-midias">${mid.map((m, k) => { const ps = comPino.filter(x => x.midia_id === m.id); return html`<div class="cs-ed-midia"><div class="cs-arte"><${MidiaPost} m=${m} ctrl=${true} />${ps.map(x => html`<span class="cs-pino" style=${'left:' + x.pino_x + '%;top:' + x.pino_y + '%'} title=${x.texto}>${comPino.indexOf(x) + 1}</span>`)}</div>
+          <select aria-label="Proporção" value=${m.proporcao} onChange=${async e => { await sb.from('post_midias').update({ proporcao: e.target.value }).eq('id', m.id); recarregarItens(); onMudou(); }}><option value="4:5">4:5 feed</option><option value="1:1">1:1 feed</option><option value="9:16">9:16 Stories</option></select>
+          <${BtnsLinha} onCima=${k > 0 && (() => moverM(k, -1))} onBaixo=${k < mid.length - 1 && (() => moverM(k, 1))} onExcluir=${async () => { if (confirm('Remover esta arte?')) { await sb.from('post_midias').delete().eq('id', m.id); recarregarItens(); onMudou(); } }} /></div>`; })}
+          <label class="ads-up"><input type="file" accept="image/*,video/mp4,video/quicktime,video/webm" multiple onChange=${subir} disabled=${up} /><span>${up ? 'Enviando…' : '+ Enviar artes ou vídeos'}</span><small>JPG, PNG, WebP, MP4 ou MOV, até 50 MB</small></label></div>`}</div>
+      ${id && html`<div><h3>Comentários do cliente</h3><div class="cs-coments" style="margin-top:8px">${com.length ? com.map(x => html`<div class=${'cs-coment ' + (x.autor_agencia ? 'ag' : 'cli') + (x.resolvido ? ' res' : '')}><small>${x.autor_agencia ? 'Agência' : 'Cliente'} · ${dataHora(x.criado_em)} · v${x.versao}${x.resolvido ? ' · resolvido' : ''}</small>${x.pino_x != null && html`<span class="cs-tagpino">${comPino.indexOf(x) + 1}</span>`}${x.texto}
+          ${!x.autor_agencia && html`<div><button class="lnk" onClick=${() => resolver(x, !x.resolvido)}>${x.resolvido ? 'Reabrir' : 'Marcar como resolvido'}</button></div>`}</div>`) : html`<span class="sub">Nenhum comentário.</span>`}</div>
+        <div class="form" style="gap:8px;margin-top:10px"><textarea value=${resp} onInput=${e => setResp(e.target.value)} placeholder="Responder ao cliente" aria-label="Responder ao cliente" style="min-height:60px"></textarea><div><button class="btn pq" disabled=${!resp.trim()} onClick=${responder}>Responder</button></div></div></div>`}
+    </div></div></div></div>`;
 }
 
 function App() {
