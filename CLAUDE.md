@@ -90,8 +90,12 @@ comentários e versões); **planos de anúncios** Google Ads e Meta Ads (ver aba
 - Gatilhos no banco enchem `automacao_fila` sem custo de IA: `briefing` (item "Formulário de briefing" concluído/alterado pelo cliente;
   `ref_id` = cliente), `solicitacao_nova` (nova solicitação) e `solicitacao_resposta` (cliente respondeu depois que a última ação da
   automação naquela solicitação foi enviar perguntas; resultado começando com `perguntas`). Uma entrada aberta por (tipo, ref_id).
-- Rotina agendada do Claude Code (sessão nova a cada disparo, seg a sex, horário de Brasília) segue `automacao/ROTINA.md` e usa
-  `automacao/painel.py` (contar, pegar, concluir, mensagem, validar, google, meta, calendario, site). Fila vazia → encerra na 1ª consulta.
+- Tarefa agendada "Rodada da fila do painel" (`trig_01RCSR9e9CSGnwWZVgRDgD7u`), seg a sex às 7h39, 12h39 e 15h39 (Brasília),
+  sessão nova a cada disparo e **sem repositório**: o pedido da tarefa conta a fila com um comando Python embutido (chave anon pública +
+  senha da variável de ambiente); se houver itens, clona a branch com `git clone` (só leitura), segue `automacao/ROTINA.md` e usa
+  `automacao/painel.py` (contar, pegar, concluir, mensagem, validar, google, meta, calendario, site).
+  Medido em 16/11/2026: rodada vazia ≈ 12 s (≈ US$ 0,10 pelo preço de tabela da API, descontado do limite da assinatura);
+  rodada com 1 item simples ≈ 48 s (≈ US$ 0,36). Criar planos ou calendários completos custa mais.
 - Tudo nasce em **rascunho** com `origem = 'claude'` (entregas e calendários) e aparece no card "Automação do Claude" do Dashboard
   e com a etiqueta "Criado pelo Claude". O único contato direto com o cliente são perguntas e avisos nas solicitações.
 - Serviços do cliente vêm das condições (`trafego`, `site`, `redes`) dos itens de Primeiros passos dele.
